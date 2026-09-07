@@ -5,19 +5,19 @@
 @tailwind utilities;
 
 :root {
-  --ink: #111312;
-  --muted: #6c716d;
-  --line: #e6e9e5;
-  --lime: #b2de4f;
-  --lime-deep: #83b92d;
-  --canvas: #f8faf7;
+  --brand-ink: 17 19 18;
+  --brand-muted: 108 113 109;
+  --brand-line: 230 233 229;
+  --brand-lime: 178 222 79;
+  --brand-lime-deep: 131 185 45;
+  --brand-canvas: 248 250 247;
 }
 
 :root.dark {
-  --ink: #f3f6f0;
-  --muted: #a8b1a8;
-  --line: #2a332a;
-  --canvas: #111512;
+  --brand-ink: 243 246 240;
+  --brand-muted: 168 177 168;
+  --brand-line: 42 51 42;
+  --brand-canvas: 17 21 18;
 }
 
 * { 
@@ -32,8 +32,8 @@ html {
 
 body {
   margin: 0;
-  background: var(--canvas);
-  color: var(--ink);
+  background: rgb(var(--brand-canvas));
+  color: rgb(var(--brand-ink));
   font-family: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
   transition: background-color 0.3s ease, color 0.3s ease;
   line-height: 1.5;
@@ -60,7 +60,7 @@ button, input, textarea, select {
 
 /* Custom focus ring */
 *:focus-visible {
-  outline: 2px solid var(--lime);
+  outline: 2px solid rgb(var(--brand-lime));
   outline-offset: 2px;
 }
 
@@ -75,9 +75,7 @@ button, input, textarea, select {
 }
 
 :root.dark .bg-white { background-color: #171d18; }
-:root.dark .bg-\[\#f7f9f6\], :root.dark .bg-\[\#f8faf7\] { background-color: #111512; }
 :root.dark [class*="border-[#e"] { border-color: #2a332a; }
-:root.dark [class*="text-[#111312"] { color: #f3f6f0; }
 
 @layer utilities {
   .text-balance { text-wrap: balance; }

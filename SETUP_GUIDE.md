@@ -6,9 +6,9 @@ This guide provides step-by-step instructions to deploy Derivix from the reposit
 Derivix uses **Supabase** for Authentication, Database (Postgres), and Real-time updates.
 
 1. **Create Project**: Go to [supabase.com](https://supabase.com) and create a new project.
-2. **Apply Schema**: 
+2. **Apply Schema**:
    - Navigate to the **SQL Editor** in the Supabase dashboard.
-   - Copy the contents of `DATABASE_SCHEMA.md` and execute them as a SQL script to create the tables, relationships, and RLS policies.
+   - Execute `supabase/migrations/20260907000000_initial_schema.sql` as SQL. `DATABASE_SCHEMA.md` is documentation, not an executable migration.
 3. **Configure Auth**:
    - Go to **Authentication** $\rightarrow$ **Providers**.
    - Enable **Email** (Confirm email: On).

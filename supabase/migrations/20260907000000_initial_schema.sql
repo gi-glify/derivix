@@ -3,7 +3,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- 1. PROFILES TABLE
 -- Extends Supabase auth.users
-CREATE TABLE profiles (
+CREATE TABLE IF NOT EXISTS profiles (
   id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   full_name text NOT NULL,
   email text UNIQUE NOT NULL,
@@ -15,7 +15,7 @@ CREATE TABLE profiles (
 );
 
 -- 2. WALLETS TABLE
-CREATE TABLE wallets (
+CREATE TABLE IF NOT EXISTS wallets (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id uuid UNIQUE NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   balance decimal(20,8) DEFAULT 0.0 CHECK (balance >= 0),
@@ -24,7 +24,7 @@ CREATE TABLE wallets (
 );
 
 -- 3. POSITIONS TABLE
-CREATE TABLE positions (
+CREATE TABLE IF NOT EXISTS positions (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   symbol text NOT NULL,
@@ -41,7 +41,7 @@ CREATE TABLE positions (
 );
 
 -- 4. TRANSACTIONS TABLE
-CREATE TABLE transactions (
+CREATE TABLE IF NOT EXISTS transactions (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   wallet_id uuid NOT NULL REFERENCES wallets(id) ON DELETE CASCADE,
@@ -58,6 +58,15 @@ ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE wallets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE positions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
+
+-- Make this migration safe to re-run in a development project.
+DROP POLICY IF EXISTS "Users can view their own profile" ON profiles;
+DROP POLICY IF EXISTS "Users can update their own profile" ON profiles;
+DROP POLICY IF EXISTS "Users can view their own wallet" ON wallets;
+DROP POLICY IF EXISTS "Users can view their own positions" ON positions;
+DROP POLICY IF EXISTS "Users can insert their own positions" ON positions;
+DROP POLICY IF EXISTS "Users can update their own positions" ON positions;
+DROP POLICY IF EXISTS "Users can view their own transactions" ON transactions;
 
 -- PROFILES POLICIES
 CREATE POLICY "Users can view their own profile" ON profiles FOR SELECT USING (auth.uid() = id);
@@ -76,7 +85,7 @@ CREATE POLICY "Users can view their own transactions" ON transactions FOR SELECT
 
 -- AUTOMATION: TRIGGER TO CREATE PROFILE AND WALLET ON AUTH SIGNUP
 CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS trigger AS 28657
+RETURNS trigger AS $$
 BEGIN
   INSERT INTO public.profiles (id, full_name, email, country)
   VALUES (
@@ -91,7 +100,9 @@ BEGIN
   
   RETURN new;
 END;
-28657 LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users

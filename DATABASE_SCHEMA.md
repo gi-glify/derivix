@@ -1,5 +1,7 @@
 # Derivix Production Database Schema (Supabase/Postgres)
 
+> This file documents the schema. Run `supabase/migrations/20260907000000_initial_schema.sql` in Supabase SQL Editor; do not execute this Markdown file as SQL.
+
 This schema is designed for a high-performance trading platform with strict audit trails and real-time balance updates.
 
 ## 1. Profiles (Users)
