@@ -1,0 +1,92 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --ink: #111312;
+  --muted: #6c716d;
+  --line: #e6e9e5;
+  --lime: #b2de4f;
+  --lime-deep: #83b92d;
+  --canvas: #f8faf7;
+}
+
+:root.dark {
+  --ink: #f3f6f0;
+  --muted: #a8b1a8;
+  --line: #2a332a;
+  --canvas: #111512;
+}
+
+* { 
+  box-sizing: border-box; 
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html { 
+  scroll-behavior: smooth; 
+}
+
+body {
+  margin: 0;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
+  line-height: 1.5;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: "Space Grotesk", sans-serif;
+}
+
+a { 
+  color: inherit; 
+  text-decoration: none; 
+  transition: opacity 0.2s ease;
+}
+
+a:hover {
+  opacity: 0.8;
+}
+
+button, input, textarea, select { 
+  font: inherit; 
+  outline: none;
+}
+
+/* Custom focus ring */
+*:focus-visible {
+  outline: 2px solid var(--lime);
+  outline-offset: 2px;
+}
+
+/* Clean form error states */
+.input-error {
+  border-color: #ef4444 !important;
+}
+.error-message {
+  color: #ef4444;
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+}
+
+:root.dark .bg-white { background-color: #171d18; }
+:root.dark .bg-\[\#f7f9f6\], :root.dark .bg-\[\#f8faf7\] { background-color: #111512; }
+:root.dark [class*="border-[#e"] { border-color: #2a332a; }
+:root.dark [class*="text-[#111312"] { color: #f3f6f0; }
+
+@layer utilities {
+  .text-balance { text-wrap: balance; }
+  .glass-effect {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+  .dark .glass-effect {
+    background: rgba(17, 21, 18, 0.7);
+  }
+}
