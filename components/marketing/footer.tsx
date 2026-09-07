@@ -21,6 +21,7 @@ export function Footer() {
             <li><a href="#features" className="hover:text-brand-lime transition-colors">Features</a></li>
             <li><a href="/privacy" className="hover:text-brand-lime transition-colors">Privacy</a></li>
             <li><a href="/terms" className="hover:text-brand-lime transition-colors">Terms</a></li>
+            <li><a href="/trading-policy" className="hover:text-brand-lime transition-colors">Trading policy</a></li>
           </ul>
         </div>
         <div>

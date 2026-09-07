@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
+import { userFromSession } from "./session";
 
 interface AuthContextType {
   session: Session | null;
@@ -25,9 +26,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!isSupabaseConfigured || !supabase) { setConfigurationError(configurationMessage); setLoading(false); return; }
-    supabase.auth.getSession().then(({ data, error }) => { if (error) setConfigurationError(error.message); setSession(data.session); setUser(data.session?.user ?? null); setLoading(false); });
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => { setSession(nextSession); setUser(nextSession?.user ?? null); setLoading(false); });
-    return () => listener.subscription.unsubscribe();
+    const client = supabase;
+    let active = true;
+    let subscription: { unsubscribe: () => void } | undefined;
+    const initialize = async () => {
+      const listener = client.auth.onAuthStateChange((_event, nextSession) => {
+        if (!active) return;
+        setSession(nextSession);
+        setUser(userFromSession(nextSession));
+        setLoading(false);
+      });
+      subscription = listener.data.subscription;
+      const { data, error } = await client.auth.getSession();
+      if (!active) return;
+      if (error) setConfigurationError(error.message);
+      setSession(data.session);
+      setUser(userFromSession(data.session));
+      setLoading(false);
+    };
+    void initialize();
+    return () => { active = false; subscription?.unsubscribe(); };
   }, []);
 
   async function signIn(email: string, password: string) {

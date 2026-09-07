@@ -30,4 +30,5 @@ Thumbs.db
 tsconfig.tsbuildinfo
 
 docs/
-
+!docs/
+!docs/LIVE_READINESS.md

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { validateLogin, validateRegistration } from "./auth";
+import { userFromSession } from "./session";
 
 describe("demo auth validation", () => {
   it("requires valid registration details", () => {
@@ -11,5 +12,10 @@ describe("demo auth validation", () => {
     expect(validateLogin("bad", "password")).toContain("valid");
     expect(validateLogin("alex@example.com", "")).toContain("password");
     expect(validateLogin("alex@example.com", "password123")).toBeNull();
+  });
+
+  it("clears the user only when the hydrated session is absent", () => {
+    expect(userFromSession(null)).toBeNull();
+    expect(userFromSession({ user: { id: "user-1" } } as never)?.id).toBe("user-1");
   });
 });
