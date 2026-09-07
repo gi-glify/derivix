@@ -15,6 +15,16 @@ const initialMarkets: Market[] = [
   { symbol: "XAU/USD", price: 3492.5, previousPrice: 3466.8 },
 ];
 
+const MARKET_SNAPSHOT_KEY = "derivix-market-snapshot-v1";
+type MarketSnapshot = { markets: Market[]; marketHistory: Record<string, PricePoint[]> };
+function readMarketSnapshot(): MarketSnapshot | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(MARKET_SNAPSHOT_KEY) ?? "null") as MarketSnapshot | null;
+    return parsed?.markets?.length && parsed.marketHistory ? parsed : null;
+  } catch { return null; }
+}
+
 type DemoContextValue = {
   markets: Market[];
   marketHistory: Record<string, PricePoint[]>;
@@ -40,12 +50,16 @@ type DemoContextValue = {
 const DemoContext = createContext<DemoContextValue | null>(null);
 
 export function DemoProvider({ children }: { children: React.ReactNode }) {
-  const [markets, setMarkets] = useState(initialMarkets);
-  const [marketHistory, setMarketHistory] = useState<Record<string, PricePoint[]>>(() => Object.fromEntries(initialMarkets.map((market) => [market.symbol, seedMarketHistory(market)])));
+  const [markets, setMarkets] = useState<Market[]>(() => readMarketSnapshot()?.markets ?? initialMarkets);
+  const [marketHistory, setMarketHistory] = useState<Record<string, PricePoint[]>>(() => readMarketSnapshot()?.marketHistory ?? Object.fromEntries(initialMarkets.map((market) => [market.symbol, seedMarketHistory(market)])));
   const [positions, setPositions] = useState<Position[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [kyc, setKyc] = useState<KycProfile>({ status: "NOT_STARTED", fullName: "", country: "", documentType: "National ID", documentNumber: "" });
+
+  useEffect(() => {
+    try { window.localStorage.setItem(MARKET_SNAPSHOT_KEY, JSON.stringify({ markets, marketHistory } satisfies MarketSnapshot)); } catch { /* storage may be unavailable in private browsing */ }
+  }, [markets, marketHistory]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
