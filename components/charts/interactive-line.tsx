@@ -1,0 +1,41 @@
+import { useId, useMemo, useState, type MouseEvent } from "react";
+import { Eye, EyeOff, Minus, Plus, RotateCcw } from "lucide-react";
+import type { PricePoint } from "@/lib/demo/types";
+import { calculateMovingAverage, priceBounds, visibleWindow } from "./interactive-candlestick-utils";
+
+const WIDTH = 1000;
+const HEIGHT = 420;
+const PLOT = { left: 54, right: 930, top: 24, bottom: 300 };
+const VOLUME = { top: 325, bottom: 374 };
+
+function lineY(value: number, min: number, span: number) { return PLOT.bottom - ((value - min) / span) * (PLOT.bottom - PLOT.top); }
+function formatPrice(value: number) { return value.toLocaleString(undefined, { maximumFractionDigits: 4 }); }
+
+export function InteractiveLineChart({ points, area = false }: { points: PricePoint[]; area?: boolean }) {
+  const [windowSize, setWindowSize] = useState(30);
+  const [zoomStart, setZoomStart] = useState(0);
+  const [followingLatest, setFollowingLatest] = useState(true);
+  const [movingAverageWindow, setMovingAverageWindow] = useState<20 | 50 | null>(20);
+  const [showVolume, setShowVolume] = useState(true);
+  const [hover, setHover] = useState<{ index: number; x: number; y: number } | null>(null);
+  const gradientId = `line-fill-${useId().replace(/:/g, "")}`;
+  const size = Math.min(windowSize, Math.max(12, points.length));
+  const maxStart = Math.max(points.length - size, 0);
+  const effectiveStart = followingLatest ? maxStart : Math.min(zoomStart, maxStart);
+  const visiblePoints = useMemo(() => visibleWindow(points, effectiveStart, size), [points, effectiveStart, size]);
+  const values = visiblePoints.map((point) => point.price);
+  const { min, max, span } = priceBounds(values.length ? values : [0, 1]);
+  const movingAverage = movingAverageWindow ? calculateMovingAverage(values, movingAverageWindow) : [];
+  const maxVolume = Math.max(...visiblePoints.map((point) => point.volume), 1);
+  const step = visiblePoints.length > 1 ? (PLOT.right - PLOT.left) / (visiblePoints.length - 1) : PLOT.right - PLOT.left;
+  const path = visiblePoints.map((point, index) => `${index === 0 ? "M" : "L"} ${PLOT.left + index * step} ${lineY(point.price, min, span)}`).join(" ");
+  const areaPath = `${path} L ${PLOT.right} ${PLOT.bottom} L ${PLOT.left} ${PLOT.bottom} Z`;
+  const handleMove = (event: MouseEvent<SVGSVGElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const chartX = ((event.clientX - rect.left) / rect.width) * WIDTH;
+    const index = Math.max(0, Math.min(visiblePoints.length - 1, Math.round((chartX - PLOT.left) / Math.max(step, 1))));
+    if (chartX < PLOT.left || chartX > PLOT.right || !visiblePoints[index]) return setHover(null);
+    setHover({ index, x: PLOT.left + index * step, y: lineY(visiblePoints[index].price, min, span) });
+  };
+  return <div className="relative h-full min-h-[390px] w-full" data-aos="fade-up"><div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-brand-line bg-brand-canvas px-2 py-1.5"><div className="flex min-w-0 flex-wrap items-center gap-1"><span className="px-2 text-[10px] font-bold uppercase tracking-[0.14em] text-brand-muted">Line tools</span><select value={movingAverageWindow ?? "none"} onChange={(event) => setMovingAverageWindow(event.target.value === "none" ? null : Number(event.target.value) as 20 | 50)} className="rounded-lg bg-transparent px-2 py-1.5 text-xs font-bold text-brand-ink"><option value="none">MA off</option><option value="20">MA 20</option><option value="50">MA 50</option></select><button type="button" onClick={() => setShowVolume((value) => !value)} className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-bold text-brand-muted hover:bg-brand-line">{showVolume ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}Volume</button></div><div className="flex items-center gap-1"><button type="button" onClick={() => setWindowSize((value) => Math.min(40, value + 4))} className="rounded-lg px-2 py-1 text-xs font-bold text-brand-muted hover:bg-brand-line" aria-label="Zoom out"><Minus className="h-3.5 w-3.5" /></button><button type="button" onClick={() => setWindowSize((value) => Math.max(12, value - 4))} className="rounded-lg px-2 py-1 text-xs font-bold text-brand-muted hover:bg-brand-line" aria-label="Zoom in"><Plus className="h-3.5 w-3.5" /></button><button type="button" onClick={() => { setZoomStart(0); setFollowingLatest(true); }} className="rounded-lg p-1.5 text-brand-muted hover:bg-brand-line" aria-label="Reset chart zoom"><RotateCcw className="h-3.5 w-3.5" /></button></div></div><div className="relative min-h-[315px] overflow-hidden rounded-xl"><svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} role="img" aria-label={`Interactive ${area ? "area" : "line"} market chart`} className="h-full w-full" onMouseMove={handleMove} onMouseLeave={() => setHover(null)}><defs><linearGradient id={gradientId} x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#b2de4f" stopOpacity=".32" /><stop offset="1" stopColor="#b2de4f" stopOpacity="0" /></linearGradient></defs>{[0, 1, 2, 3, 4, 5].map((index) => { const y = PLOT.top + (index / 5) * (PLOT.bottom - PLOT.top); return <line key={`h-${index}`} x1={PLOT.left} x2={PLOT.right} y1={y} y2={y} stroke="currentColor" className="text-brand-line" strokeDasharray="3 5" />; })}{Array.from({ length: 9 }, (_, index) => { const x = PLOT.left + (index / 8) * (PLOT.right - PLOT.left); return <line key={`v-${index}`} x1={x} x2={x} y1={PLOT.top} y2={showVolume ? VOLUME.bottom : PLOT.bottom} stroke="currentColor" className="text-brand-line" strokeDasharray="3 5" />; })}{[0, 1, 2, 3, 4].map((index) => <text key={`axis-${index}`} x={PLOT.right + 10} y={PLOT.top + (index / 4) * (PLOT.bottom - PLOT.top) + 4} className="fill-brand-muted text-[12px]">{formatPrice(max - (index / 4) * span)}</text>)}{area && <path d={areaPath} fill={`url(#${gradientId})`} />}<path d={path} fill="none" stroke="#83b92d" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" />{movingAverageWindow && <path d={movingAverage.map((value, index) => value === null ? "" : `${index === 0 || movingAverage[index - 1] === null ? "M" : "L"} ${PLOT.left + index * step} ${lineY(value, min, span)}`).join(" ")} fill="none" stroke="#42a5f5" strokeWidth="2.5" strokeLinecap="round" />}{showVolume && visiblePoints.map((point, index) => <rect key={`volume-${point.time}-${index}`} x={PLOT.left + index * step - 3} y={VOLUME.bottom - (point.volume / maxVolume) * (VOLUME.bottom - VOLUME.top)} width="6" height={(point.volume / maxVolume) * (VOLUME.bottom - VOLUME.top)} fill={point.close >= point.open ? "#83b92d" : "#d16e6e"} opacity=".7" rx="1" />)}{hover && <><line x1={hover.x} x2={hover.x} y1={PLOT.top} y2={showVolume ? VOLUME.bottom : PLOT.bottom} stroke="#42a5f5" strokeDasharray="4 4" /><line x1={PLOT.left} x2={PLOT.right} y1={hover.y} y2={hover.y} stroke="#42a5f5" strokeDasharray="4 4" /><circle cx={hover.x} cy={hover.y} r="4" fill="#42a5f5" /></>}</svg>{hover && <div className="pointer-events-none absolute left-3 top-3 rounded-lg border border-brand-line bg-brand-ink/95 px-3 py-2 text-[11px] leading-5 text-white shadow-lg"><p className="font-bold text-brand-lime">{new Date(visiblePoints[hover.index].time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</p><p>Price: {formatPrice(visiblePoints[hover.index].price)}</p><p>Change: {(visiblePoints[hover.index].price - visiblePoints[hover.index].open).toFixed(4)}</p><p>Volume: {visiblePoints[hover.index].volume.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p></div>}</div><div className="mt-1 px-2"><input aria-label="Line chart zoom" type="range" min="0" max={maxStart} value={followingLatest ? maxStart : Math.min(zoomStart, maxStart)} onChange={(event) => { setFollowingLatest(false); setZoomStart(Number(event.target.value)); }} className="h-2 w-full accent-[#83b92d]" /><div className="flex justify-between gap-2 text-[10px] text-brand-muted"><span>{visiblePoints[0] ? new Date(visiblePoints[0].time).toLocaleDateString([], { month: "short", day: "numeric" }) : ""}</span><span className="truncate">Drag to review history</span><span>{visiblePoints.at(-1) ? new Date(visiblePoints.at(-1)!.time).toLocaleDateString([], { month: "short", day: "numeric" }) : ""}</span></div></div></div>;
+}
