@@ -28,3 +28,6 @@ Thumbs.db
 .next/
 .vite/
 tsconfig.tsbuildinfo
+
+docs/
+
