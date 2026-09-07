@@ -11,7 +11,14 @@ export function CookieBanner() {
   }, []);
 
   const acceptCookies = () => {
-    localStorage.setItem("cookie-consent", "true");
+    localStorage.setItem("cookie-consent", "accepted");
+    window.dispatchEvent(new Event("derivix-cookie-consent"));
+    setIsVisible(false);
+  };
+
+  const rejectCookies = () => {
+    localStorage.setItem("cookie-consent", "essential");
+    window.dispatchEvent(new Event("derivix-cookie-consent"));
     setIsVisible(false);
   };
 
@@ -20,16 +27,14 @@ export function CookieBanner() {
   return (
     <div className="fixed bottom-0 left-0 right-0 z-[100] p-4 md:p-6">
       <div className="mx-auto max-w-5xl rounded-2xl bg-brand-ink p-6 text-white shadow-2xl md:flex md:items-center md:justify-between">
-        <p className="text-sm text-gray-300 mb-4 md:mb-0 md:max-w-2xl">
-          We use cookies to enhance your experience and analyze our traffic. By continuing to use our site, you agree to our 
+        <p className="mb-4 text-sm text-gray-300 md:mb-0 md:max-w-2xl">
+          We use essential cookies for account sessions and optional analytics cookies to understand platform usage. See our
           <a href="/privacy" className="ml-1 underline hover:text-brand-lime">Privacy Policy</a>.
         </p>
-        <button
-          onClick={acceptCookies}
-          className="w-full rounded-full bg-brand-lime px-6 py-2 text-sm font-bold text-brand-ink transition hover:bg-brand-limeDeep md:w-auto"
-        >
-          Accept All
-        </button>
+        <div className="flex w-full flex-col gap-2 sm:flex-row md:w-auto">
+          <button onClick={rejectCookies} className="rounded-full border border-white/25 px-6 py-2 text-sm font-bold text-white transition hover:border-white">Essential only</button>
+          <button onClick={acceptCookies} className="rounded-full bg-brand-lime px-6 py-2 text-sm font-bold text-brand-ink transition hover:bg-brand-limeDeep">Accept analytics</button>
+        </div>
       </div>
     </div>
   );

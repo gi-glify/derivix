@@ -25,6 +25,9 @@ import { AOSController } from "@/components/aos-controller";
 import { ProtectedRoute } from "@/components/auth/protected-route";
 import { AuthProvider, useAuth } from "@/lib/auth/store";
 import { ThemeProvider } from "@/lib/ui/theme";
+import { Analytics } from "@/components/analytics";
+import { CookieBanner } from "@/components/marketing/cookie-banner";
+import { SiteSeo } from "@/components/site-seo";
 
 function RootRoute() {
   const { user, loading } = useAuth();
@@ -34,5 +37,5 @@ function RootRoute() {
 }
 
 export default function App() {
-  return <ThemeProvider><AuthProvider><AOSController /><Routes><Route path="/" element={<RootRoute />} /><Route path="/auth/login" element={<LoginPage />} /><Route path="/auth/register" element={<RegisterPage />} /><Route path="/privacy" element={<PrivacyPage />} /><Route path="/terms" element={<TermsPage />} /><Route path="/trading-policy" element={<TradingPolicyPage />} /><Route path="/thank-you" element={<ThankYouPage />} /><Route element={<ProtectedRoute />}><Route element={<AppLayout />}><Route path="/app" element={<DashboardPage />} /><Route path="/app/deposit" element={<DepositPage />} /><Route path="/app/markets" element={<MarketsPage />} /><Route path="/app/trade" element={<TradePage />} /><Route path="/app/positions" element={<PositionsPage />} /><Route path="/app/transactions" element={<TransactionsPage />} /><Route path="/app/withdraw" element={<WithdrawPage />} /><Route path="/app/kyc" element={<KycPage />} /><Route path="/app/profile" element={<ProfilePage />} /><Route path="/admin" element={<AdminPage />} /></Route></Route><Route path="*" element={<NotFoundPage />} /></Routes><DesktopExperiencePrompt /><OnboardingTour /><Chatbot /></AuthProvider></ThemeProvider>;
+  return <ThemeProvider><AuthProvider><SiteSeo /><Analytics /><CookieBanner /><AOSController /><Routes><Route path="/" element={<RootRoute />} /><Route path="/auth/login" element={<LoginPage />} /><Route path="/auth/register" element={<RegisterPage />} /><Route path="/privacy" element={<PrivacyPage />} /><Route path="/terms" element={<TermsPage />} /><Route path="/trading-policy" element={<TradingPolicyPage />} /><Route path="/thank-you" element={<ThankYouPage />} /><Route element={<ProtectedRoute />}><Route element={<AppLayout />}><Route path="/app" element={<DashboardPage />} /><Route path="/app/deposit" element={<DepositPage />} /><Route path="/app/markets" element={<MarketsPage />} /><Route path="/app/trade" element={<TradePage />} /><Route path="/app/positions" element={<PositionsPage />} /><Route path="/app/transactions" element={<TransactionsPage />} /><Route path="/app/withdraw" element={<WithdrawPage />} /><Route path="/app/kyc" element={<KycPage />} /><Route path="/app/profile" element={<ProfilePage />} /><Route path="/admin" element={<AdminPage />} /></Route></Route><Route path="*" element={<NotFoundPage />} /></Routes><DesktopExperiencePrompt /><OnboardingTour /><Chatbot /></AuthProvider></ThemeProvider>;
 }

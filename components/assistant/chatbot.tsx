@@ -6,7 +6,7 @@ type Message = { role: "assistant" | "user"; text: string };
 function demoAnswer(input: string) {
   const question = input.toLowerCase();
   if (question.includes("loss") || question.includes("risk")) return "Trading can result in partial or total loss. Start small, use a stop plan, and never trade money you cannot afford to lose. Read the Trading Policy before placing an order.";
-  if (question.includes("deposit") || question.includes("fund")) return "Open Wallet from the mobile navigation or sidebar to review the deposit flow. In this demo, balances activate after a completed simulated deposit.";
+  if (question.includes("deposit") || question.includes("fund")) return "Open Wallet from the mobile navigation or sidebar to review the deposit flow. Balances activate after a completed payment confirmation.";
   if (question.includes("chart") || question.includes("candle")) return "Use the chart controls on Trade to switch between candles, line, area, and volume views. Prices are simulated and update every 1.5 seconds.";
   return "I can explain the charts, simulated trading, deposits, withdrawals, account setup, and risk controls. What would you like to understand?";
 }

@@ -4,6 +4,9 @@ import { Logo } from "@/components/brand/logo";
 import { Mail, MapPin, Phone } from "lucide-react";
 
 export function Footer() {
+  const address = String(import.meta.env.VITE_CONTACT_ADDRESS ?? "Contact address configured by the account owner");
+  const phone = String(import.meta.env.VITE_CONTACT_PHONE ?? "Phone configured by the account owner");
+  const email = String(import.meta.env.VITE_CONTACT_EMAIL ?? "support@derivix.com");
   return (
     <footer className="bg-brand-canvas border-t border-brand-line pt-16 pb-8 px-6 lg:px-10">
       <div className="mx-auto max-w-7xl grid grid-cols-1 gap-12 md:grid-cols-4">
@@ -29,15 +32,15 @@ export function Footer() {
           <ul className="space-y-4 text-sm text-brand-muted">
             <li className="flex items-start gap-3">
               <MapPin className="h-4 w-4 mt-0.5 text-brand-lime" />
-              <span>123 Financial District, Nairobi, Kenya</span>
+              <span>{address}</span>
             </li>
             <li className="flex items-start gap-3">
               <Phone className="h-4 w-4 mt-0.5 text-brand-lime" />
-              <span>+254 700 000 000</span>
+              <span>{phone}</span>
             </li>
             <li className="flex items-start gap-3">
               <Mail className="h-4 w-4 mt-0.5 text-brand-lime" />
-              <span>support@derivix.com</span>
+              <a href={`mailto:${email}`} className="hover:text-brand-ink">{email}</a>
             </li>
           </ul>
         </div>

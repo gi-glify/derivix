@@ -4,6 +4,7 @@ import { Logo } from "@/components/brand/logo";
 import { MarketPreview } from "@/components/marketing/market-preview";
 import { Footer } from "@/components/marketing/footer";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { MobileCTA } from "@/components/app/mobile-cta";
 
 const features = [
   { icon: BarChart3, title: "Complete Market Visibility", text: "Monitor global markets and your portfolio value from one focused, high-performance workspace." },
@@ -53,7 +54,7 @@ export default function HomePage() {
           </div >
           <div className="mt-10 flex flex-wrap items-center justify-center lg:justify-start gap-x-6 gap-y-3 text-[11px] font-semibold text-brand-muted">
             <span className="flex items-center gap-2"><LockKeyhole className="h-3.5 w-3.5 text-brand-lime" /> Secure & Encrypted</span>
-            <span className="flex items-center gap-2"><WalletCards className="h-3.5 w-3.5 text-brand-lime" /> Instant Demo Funding</span>
+            <span className="flex items-center gap-2"><WalletCards className="h-3.5 w-3.5 text-brand-lime" /> Flexible account funding</span>
             <span className="flex items-center gap-2"><ShieldCheck className="h-3.5 w-3.5 text-brand-lime" /> Advanced Risk Tools</span>
           </div >
         </div >
@@ -95,10 +96,11 @@ export default function HomePage() {
       </section>
 
       <section id="security" className="mx-auto flex max-w-7xl flex-col gap-6 px-6 py-16 text-sm text-brand-muted sm:flex-row sm:items-center sm:justify-between lg:px-10" data-aos="fade-up">
-        <p className="max-w-md">Derivix is a professional trading platform. All transactions are executed in real-time and product demonstration.</p>
+        <p className="max-w-md">Derivix is a focused trading workspace for market learning, portfolio planning, and disciplined execution.</p>
         <span className="font-bold text-brand-ink">Trade beyond limits<span className="ml-1 text-brand-lime">●</span></span>
       </section>
       <Footer />
+      <MobileCTA />
     </main>
   );
 }
