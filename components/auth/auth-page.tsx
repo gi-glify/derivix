@@ -11,7 +11,7 @@ function FacebookIcon() { return <svg viewBox="0 0 24 24" aria-hidden="true" cla
 function XIcon() { return <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5"><path fill="currentColor" d="M18.9 3H22l-6.77 7.74L23.2 21h-6.24l-4.89-6.39L6.48 21H3.36l7.24-8.28L3 3h6.4l4.42 5.84L18.9 3Zm-1.1 15.9h1.73L8.48 4.99H6.62L17.8 18.9Z"/></svg>; }
 
 export function AuthPage({ mode }: { mode: "login" | "register" }) {
-  const { signIn, signUp, signInWithProvider } = useAuth();
+  const { signIn, signUp, signInWithProvider, configurationError } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -142,7 +142,7 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
               />
             </label>
           )}
-          {error && <p className="mb-4 rounded-xl bg-red-50 p-3 text-xs font-bold text-red-500 dark:bg-red-900/20">{error}</p>}
+          {(error || configurationError) && <p className="mb-4 rounded-xl bg-red-50 p-3 text-xs font-bold text-red-500 dark:bg-red-900/20">{error || configurationError}</p>}
           <LoadingButton 
             isLoading={isLoading} 
             className="w-full rounded-xl bg-brand-lime px-5 py-3.5 text-sm font-bold text-brand-ink transition-all hover:bg-brand-limeDeep"

@@ -4,7 +4,8 @@ import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { moveMarket, refreshPosition, validateOrder } from "./trading";
 import { completedBalance, hasCompletedDeposit, validateWithdrawal } from "./ledger";
 import { approveWithdrawal as approveWithdrawalEntry, reviewKyc as reviewKycState } from "./admin";
-import type { KycProfile, Market, Position, Side, Transaction } from "./types";
+import { supabase } from "@/lib/supabase";
+import type { KycProfile, Market, Position, PricePoint, Side, Transaction } from "./types";
 
 const initialMarkets: Market[] = [
   { symbol: "EUR/USD", price: 1.1724, previousPrice: 1.171 },
@@ -14,6 +15,7 @@ const initialMarkets: Market[] = [
 
 type DemoContextValue = {
   markets: Market[];
+  marketHistory: Record<string, PricePoint[]>;
   positions: Position[];
   transactions: Transaction[];
   balance: number;
@@ -33,6 +35,7 @@ const DemoContext = createContext<DemoContextValue | null>(null);
 
 export function DemoProvider({ children }: { children: React.ReactNode }) {
   const [markets, setMarkets] = useState(initialMarkets);
+  const [marketHistory, setMarketHistory] = useState<Record<string, PricePoint[]>>(() => Object.fromEntries(initialMarkets.map((market) => [market.symbol, Array.from({ length: 36 }, (_, index) => ({ time: Date.now() - (35 - index) * 1500, price: market.price + (Math.sin(index / 3) * market.price * 0.0005), open: market.price, high: market.price, low: market.price, close: market.price, volume: 0 }))])));
   const [positions, setPositions] = useState<Position[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [kyc, setKyc] = useState<KycProfile>({ status: "NOT_STARTED", fullName: "", country: "", documentType: "National ID", documentNumber: "" });
@@ -48,16 +51,33 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
           const market = nextMarkets.find((item) => item.symbol === position.symbol);
           return market ? refreshPosition(position, market) : position;
         }));
+        setMarketHistory((currentHistory) => Object.fromEntries(nextMarkets.map((market) => {
+          const previous = currentMarkets.find((item) => item.symbol === market.symbol)?.price ?? market.price;
+          const point: PricePoint = { time: Date.now(), price: market.price, open: previous, high: Math.max(previous, market.price), low: Math.min(previous, market.price), close: market.price, volume: Math.random() * 1000 };
+          return [market.symbol, [...(currentHistory[market.symbol] ?? []), point].slice(-60)];
+        })));
         return nextMarkets;
       });
     }, 1500);
     return () => window.clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    if (!supabase) return;
+    const realtimeClient = supabase;
+    const channel = realtimeClient.channel("market-tick-stream").on("postgres_changes", { event: "INSERT", schema: "public", table: "market_ticks" }, (payload) => {
+      const row = payload.new as { symbol: string; open: number; high: number; low: number; close: number; volume: number; created_at: string };
+      const point = { time: new Date(row.created_at).getTime(), price: Number(row.close), open: Number(row.open), high: Number(row.high), low: Number(row.low), close: Number(row.close), volume: Number(row.volume) };
+      setMarketHistory((current) => ({ ...current, [row.symbol]: [...(current[row.symbol] ?? []), point].slice(-60) }));
+      setMarkets((current) => current.map((market) => market.symbol === row.symbol ? { ...market, previousPrice: market.price, price: point.close } : market));
+    }).subscribe();
+    return () => { void realtimeClient.removeChannel(channel); };
+  }, []);
+
   const value = useMemo<DemoContextValue>(() => {
     const balance = completedBalance(transactions);
     return {
-      markets, positions, transactions, balance, hasDeposit: hasCompletedDeposit(transactions),
+      markets, marketHistory, positions, transactions, balance, hasDeposit: hasCompletedDeposit(transactions),
       beginDeposit(amount, provider) {
         const id = crypto.randomUUID();
         setTransactions((current) => [{ id, type: "DEPOSIT", amount, status: "PENDING", provider, description: `${provider} deposit`, createdAt: new Date().toISOString() }, ...current]);
@@ -96,7 +116,7 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
         });
       },
     };
-  }, [kyc, markets, positions, transactions]);
+  }, [kyc, marketHistory, markets, positions, transactions]);
 
   return <DemoContext.Provider value={value}>{children}</DemoContext.Provider>;
 }

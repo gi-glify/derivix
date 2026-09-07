@@ -14,6 +14,7 @@ import LoginPage from "../app/auth/login/page";
 import RegisterPage from "../app/auth/register/page";
 import KycPage from "../app/app/kyc/page";
 import AdminPage from "../app/admin/page";
+import ProfilePage from "../app/app/profile/page";
 import NotFoundPage from "../app/pages/not-found/page";
 import PrivacyPage from "../app/pages/privacy/page";
 import TermsPage from "../app/pages/terms/page";
@@ -58,6 +59,7 @@ export default function App() {
               <Route path="/app/transactions" element={<TransactionsPage />} />
               <Route path="/app/withdraw" element={<WithdrawPage />} />
               <Route path="/app/kyc" element={<KycPage />} />
+              <Route path="/app/profile" element={<ProfilePage />} />
               <Route path="/admin" element={<AdminPage />} />
             </Route>
           </Route>

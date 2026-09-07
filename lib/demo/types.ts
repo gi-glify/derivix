@@ -8,6 +8,8 @@ export type Market = {
   previousPrice: number;
 };
 
+export type PricePoint = { time: number; price: number; open: number; high: number; low: number; close: number; volume: number };
+
 export type Position = {
   id: string;
   symbol: string;

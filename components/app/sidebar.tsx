@@ -10,7 +10,7 @@ const navigation = [
   { label: "Wallet", href: "/app/deposit", icon: Wallet },
   { label: "Transactions", href: "/app/transactions", icon: ListTodo },
   { label: "Verification", href: "/app/kyc", icon: ShieldCheck },
-  { label: "Admin", href: "/admin", icon: Settings2 },
+  { label: "Profile", href: "/app/profile", icon: Settings2 },
 ];
 
 export function Sidebar() {
