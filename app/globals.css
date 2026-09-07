@@ -24,7 +24,7 @@
   box-sizing: border-box; 
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  transition-property: background-color, border-color, color, fill, stroke, box-shadow;
+  transition-property: background-color, border-color, color, box-shadow;
   transition-duration: 220ms;
   transition-timing-function: ease;
 }
