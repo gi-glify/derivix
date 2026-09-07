@@ -29,6 +29,6 @@ Thumbs.db
 .vite/
 tsconfig.tsbuildinfo
 
+# Private project documentation and reference material
 docs/
-!docs/
-!docs/LIVE_READINESS.md
+*.md
