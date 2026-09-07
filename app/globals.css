@@ -86,6 +86,32 @@ button, input, textarea, select {
 :root.dark .bg-white { background-color: #171d18; }
 :root.dark [class*="border-[#e"] { border-color: #2a332a; }
 
+/* The market terminal uses the reference's dark palette by default, but follows the app theme in light mode. */
+:root.market-terminal-route:not(.dark) main[class*="min-h-"] {
+  background-color: rgb(var(--brand-canvas)) !important;
+  color: rgb(var(--brand-ink));
+}
+:root.market-terminal-route:not(.dark) main[class*="min-h-"] section,
+:root.market-terminal-route:not(.dark) main[class*="min-h-"] header,
+:root.market-terminal-route:not(.dark) main[class*="min-h-"] footer {
+  border-color: rgb(var(--brand-line)) !important;
+  background-color: #ffffff !important;
+  color: rgb(var(--brand-ink));
+}
+:root.market-terminal-route:not(.dark) main[class*="min-h-"] [class*="bg-[#111716"],
+:root.market-terminal-route:not(.dark) main[class*="min-h-"] [class*="bg-[#0d1110"] {
+  background-color: #ffffff !important;
+}
+:root.market-terminal-route:not(.dark) main[class*="min-h-"] [class*="bg-black"] {
+  background-color: rgb(var(--brand-canvas)) !important;
+}
+:root.market-terminal-route:not(.dark) main[class*="min-h-"] [class*="border-white"] {
+  border-color: rgb(var(--brand-line)) !important;
+}
+:root.market-terminal-route:not(.dark) main[class*="min-h-"] [class*="text-white"] {
+  color: rgb(var(--brand-ink)) !important;
+}
+
 @layer utilities {
   .text-balance { text-wrap: balance; }
   .glass-effect {

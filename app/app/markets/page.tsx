@@ -5,10 +5,12 @@ import { Activity, ArrowDownRight, ArrowLeft, ArrowUpRight, Bell, CandlestickCha
 import { Link } from "@/components/router-link";
 import { InteractiveCandlestickChart } from "@/components/charts/interactive-candlestick";
 import { useDemo } from "@/lib/demo/store";
+import { useLocation } from "react-router-dom";
 
 function money(value: number, digits = 2) { return value.toLocaleString(undefined, { minimumFractionDigits: digits, maximumFractionDigits: digits }); }
 
 export default function MarketsPage() {
+  const { pathname } = useLocation();
   const { markets, marketHistory, positions, transactions, balance, hasDeposit, openPosition } = useDemo();
   const [symbol, setSymbol] = useState(markets[0]?.symbol ?? "EUR/USD");
   const [side, setSide] = useState<"BUY" | "SELL">("BUY");
@@ -24,6 +26,7 @@ export default function MarketsPage() {
   const recentTrades = transactions.filter((transaction) => transaction.provider === symbol).slice(0, 4);
 
   useEffect(() => { if (!toast) return; const timer = window.setTimeout(() => setToast(null), 4200); return () => window.clearTimeout(timer); }, [toast]);
+  useEffect(() => { document.documentElement.classList.add("market-terminal-route"); return () => document.documentElement.classList.remove("market-terminal-route"); }, [pathname]);
   const spread = useMemo(() => market.price * 0.00012, [market.price]);
   function submit() { const error = openPosition(symbol, side, Number(quantity)); setToast(error ?? `${side} order submitted for ${symbol}`); }
 
