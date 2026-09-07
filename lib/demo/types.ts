@@ -6,6 +6,9 @@ export type Market = {
   symbol: string;
   price: number;
   previousPrice: number;
+  trend?: number;
+  volatility?: number;
+  regimeTicks?: number;
 };
 
 export type PricePoint = { time: number; price: number; open: number; high: number; low: number; close: number; volume: number };
@@ -34,6 +37,8 @@ export type Transaction = {
   description: string;
   createdAt: string;
 };
+
+export type AppNotification = { id: string; title: string; body: string; kind: "market" | "trade" | "system"; createdAt: string; read: boolean };
 
 export type KycStatus = "NOT_STARTED" | "PENDING" | "APPROVED" | "REJECTED" | "REQUIRES_REVIEW";
 export type KycProfile = { status: KycStatus; fullName: string; country: string; documentType: string; documentNumber: string; submittedAt?: string };

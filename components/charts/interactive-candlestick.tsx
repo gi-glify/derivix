@@ -1,4 +1,4 @@
-import { useMemo, useState, type MouseEvent } from "react";
+import { useEffect, useMemo, useState, type MouseEvent } from "react";
 import { Download, Eye, EyeOff, RotateCcw } from "lucide-react";
 import type { PricePoint } from "@/lib/demo/types";
 import { calculateMovingAverage, priceBounds, visibleWindow } from "./interactive-candlestick-utils";
@@ -14,10 +14,21 @@ function formatPrice(value: number) { return value.toLocaleString(undefined, { m
 export function InteractiveCandlestickChart({ points }: { points: PricePoint[] }) {
   const [movingAverageWindow, setMovingAverageWindow] = useState<20 | 50 | null>(20);
   const [annotations, setAnnotations] = useState(true);
+  const [windowSize, setWindowSize] = useState(30);
   const [zoomStart, setZoomStart] = useState(0);
   const [followingLatest, setFollowingLatest] = useState(true);
   const [hover, setHover] = useState<{ index: number; x: number; y: number } | null>(null);
-  const size = Math.min(40, Math.max(20, points.length));
+  useEffect(() => {
+    const handleWheelZoom = (event: WheelEvent) => {
+      const target = event.target;
+      if (!(target instanceof Element) || !target.closest('svg[aria-label^="Interactive live candlestick"]')) return;
+      event.preventDefault();
+      setWindowSize((current) => event.deltaY < 0 ? Math.max(12, current - 2) : Math.min(40, current + 2));
+    };
+    window.addEventListener("wheel", handleWheelZoom, { passive: false });
+    return () => window.removeEventListener("wheel", handleWheelZoom);
+  }, []);
+  const size = Math.min(windowSize, Math.max(12, points.length));
   const maxStart = Math.max(points.length - size, 0);
   const effectiveStart = followingLatest ? maxStart : Math.min(zoomStart, maxStart);
   const windowPoints = useMemo(() => visibleWindow(points, effectiveStart, size), [points, size, effectiveStart]);

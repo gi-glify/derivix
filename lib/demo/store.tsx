@@ -5,8 +5,9 @@ import { moveMarket, refreshPosition, validateOrder } from "./trading";
 import { completedBalance, hasCompletedDeposit, validateWithdrawal } from "./ledger";
 import { approveWithdrawal as approveWithdrawalEntry, reviewKyc as reviewKycState } from "./admin";
 import { supabase } from "@/lib/supabase";
-import type { KycProfile, Market, Position, PricePoint, Side, Transaction } from "./types";
+import type { AppNotification, KycProfile, Market, Position, PricePoint, Side, Transaction } from "./types";
 import { seedMarketHistory } from "./history";
+import { evolveMarket } from "./market-pattern";
 
 const initialMarkets: Market[] = [
   { symbol: "EUR/USD", price: 1.1724, previousPrice: 1.171 },
@@ -19,6 +20,10 @@ type DemoContextValue = {
   marketHistory: Record<string, PricePoint[]>;
   positions: Position[];
   transactions: Transaction[];
+  notifications: AppNotification[];
+  unreadNotifications: number;
+  markAllNotificationsRead: () => void;
+  markNotificationRead: (id: string) => void;
   balance: number;
   hasDeposit: boolean;
   beginDeposit: (amount: number, provider: string) => string;
@@ -39,15 +44,14 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
   const [marketHistory, setMarketHistory] = useState<Record<string, PricePoint[]>>(() => Object.fromEntries(initialMarkets.map((market) => [market.symbol, seedMarketHistory(market)])));
   const [positions, setPositions] = useState<Position[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [kyc, setKyc] = useState<KycProfile>({ status: "NOT_STARTED", fullName: "", country: "", documentType: "National ID", documentNumber: "" });
 
   useEffect(() => {
     const timer = window.setInterval(() => {
       setMarkets((currentMarkets) => {
-        const nextMarkets = currentMarkets.map((market) => {
-          const movement = (Math.random() - 0.5) * market.price * 0.0008;
-          return moveMarket(market, movement);
-        });
+        const evolved = currentMarkets.map((market) => { const next = evolveMarket(market); return { ...next, market: moveMarket(next.market, next.delta) }; });
+        const nextMarkets = evolved.map(({ market }) => market);
         setPositions((currentPositions) => currentPositions.map((position) => {
           const market = nextMarkets.find((item) => item.symbol === position.symbol);
           return market ? refreshPosition(position, market) : position;
@@ -60,6 +64,20 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
         return nextMarkets;
       });
     }, 1500);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setMarkets((current) => {
+        const market = current[Math.floor(Math.random() * current.length)];
+        if (!market) return current;
+        const change = market.price - market.previousPrice;
+        const notification: AppNotification = { id: crypto.randomUUID(), title: `${market.symbol} market pulse`, body: `${change >= 0 ? "Rising" : "Falling"} ${Math.abs(change).toFixed(4)} · simulated tick`, kind: "market", createdAt: new Date().toISOString(), read: false };
+        setNotifications((items) => [notification, ...items].slice(0, 20));
+        return current;
+      });
+    }, 9000);
     return () => window.clearInterval(timer);
   }, []);
 
@@ -78,7 +96,9 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo<DemoContextValue>(() => {
     const balance = completedBalance(transactions);
     return {
-      markets, marketHistory, positions, transactions, balance, hasDeposit: hasCompletedDeposit(transactions),
+      markets, marketHistory, positions, transactions, notifications, unreadNotifications: notifications.filter((item) => !item.read).length, balance, hasDeposit: hasCompletedDeposit(transactions),
+      markAllNotificationsRead() { setNotifications((items) => items.map((item) => ({ ...item, read: true }))); },
+      markNotificationRead(id) { setNotifications((items) => items.map((item) => item.id === id ? { ...item, read: true } : item)); },
       beginDeposit(amount, provider) {
         const id = crypto.randomUUID();
         setTransactions((current) => [{ id, type: "DEPOSIT", amount, status: "PENDING", provider, description: `${provider} deposit`, createdAt: new Date().toISOString() }, ...current]);
@@ -105,6 +125,8 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
         if (error) return error;
         const id = crypto.randomUUID();
         setPositions((current) => [{ id, symbol, side, quantity, entryPrice: market.price, currentPrice: market.price, unrealizedPnl: 0, status: "OPEN", openedAt: new Date().toISOString() }, ...current]);
+        const notification: AppNotification = { id: crypto.randomUUID(), title: `${side} order opened`, body: `${quantity.toFixed(2)} lot ${symbol} position is now simulated.`, kind: "trade", createdAt: new Date().toISOString(), read: false };
+        setNotifications((items) => [notification, ...items].slice(0, 20));
         return null;
       },
       closePosition(id) {
@@ -117,7 +139,7 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
         });
       },
     };
-  }, [kyc, marketHistory, markets, positions, transactions]);
+  }, [kyc, marketHistory, markets, notifications, positions, transactions]);
 
   return <DemoContext.Provider value={value}>{children}</DemoContext.Provider>;
 }
