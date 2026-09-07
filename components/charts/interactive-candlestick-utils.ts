@@ -11,3 +11,9 @@ export function visibleWindow<T>(values: T[], start: number, size = 20): T[] {
   const safeStart = Math.min(Math.max(start, 0), values.length - size);
   return values.slice(safeStart, safeStart + size);
 }
+
+export function priceBounds(values: number[]) {
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  return { min, max, span: Math.max(max - min, 0.0001) };
+}

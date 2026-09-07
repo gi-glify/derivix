@@ -9,7 +9,7 @@ export function Topbar() {
 
   return (
     <header className="flex items-center justify-between border-b border-brand-line bg-white px-5 py-4 dark:border-brand-line dark:bg-brand-ink sm:px-8">
-      <div className="flex items-center gap-4">
+      <div className="flex min-w-0 items-center gap-3 sm:gap-4">
         {/* Mobile Controls Group */}
         <div className="flex items-center gap-2 lg:hidden">
           <button 
@@ -25,7 +25,7 @@ export function Topbar() {
           <ThemeToggle />
         </div >
 
-        <div className="ml-2">
+        <div className="ml-1 min-w-0 sm:ml-2">
           <p className="text-[10px] font-bold uppercase tracking-[0.17em] text-brand-muted">
             {new Date().toLocaleDateString("en-GB", { 
               weekday: "long", 
@@ -34,7 +34,7 @@ export function Topbar() {
               year: "numeric" 
             })}
           </p>
-          <h1 className="mt-0.5 text-xl font-bold tracking-tight text-brand-ink dark:text-brand-ink">
+          <h1 className="mt-0.5 max-w-[45vw] truncate text-base font-bold tracking-tight text-brand-ink dark:text-brand-ink sm:max-w-none sm:text-xl">
             Good morning, {user?.user_metadata?.full_name?.split(" ")[0] || "there"}
           </h1>
         </div >

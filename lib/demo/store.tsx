@@ -6,6 +6,7 @@ import { completedBalance, hasCompletedDeposit, validateWithdrawal } from "./led
 import { approveWithdrawal as approveWithdrawalEntry, reviewKyc as reviewKycState } from "./admin";
 import { supabase } from "@/lib/supabase";
 import type { KycProfile, Market, Position, PricePoint, Side, Transaction } from "./types";
+import { seedMarketHistory } from "./history";
 
 const initialMarkets: Market[] = [
   { symbol: "EUR/USD", price: 1.1724, previousPrice: 1.171 },
@@ -35,7 +36,7 @@ const DemoContext = createContext<DemoContextValue | null>(null);
 
 export function DemoProvider({ children }: { children: React.ReactNode }) {
   const [markets, setMarkets] = useState(initialMarkets);
-  const [marketHistory, setMarketHistory] = useState<Record<string, PricePoint[]>>(() => Object.fromEntries(initialMarkets.map((market) => [market.symbol, Array.from({ length: 36 }, (_, index) => ({ time: Date.now() - (35 - index) * 1500, price: market.price + (Math.sin(index / 3) * market.price * 0.0005), open: market.price, high: market.price, low: market.price, close: market.price, volume: 0 }))])));
+  const [marketHistory, setMarketHistory] = useState<Record<string, PricePoint[]>>(() => Object.fromEntries(initialMarkets.map((market) => [market.symbol, seedMarketHistory(market)])));
   const [positions, setPositions] = useState<Position[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [kyc, setKyc] = useState<KycProfile>({ status: "NOT_STARTED", fullName: "", country: "", documentType: "National ID", documentNumber: "" });
