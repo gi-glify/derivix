@@ -6,7 +6,7 @@ import { completedBalance, hasCompletedDeposit, validateWithdrawal } from "./led
 import { approveWithdrawal as approveWithdrawalEntry, reviewKyc as reviewKycState } from "./admin";
 import { supabase } from "@/lib/supabase";
 import type { AppNotification, KycProfile, Market, Position, PricePoint, Side, Transaction } from "./types";
-import { seedMarketHistory } from "./history";
+import { HISTORY_POINTS, seedMarketHistory } from "./history";
 import { evolveMarket } from "./market-pattern";
 
 const initialMarkets: Market[] = [
@@ -21,7 +21,7 @@ function readMarketSnapshot(): MarketSnapshot | null {
   if (typeof window === "undefined") return null;
   try {
     const parsed = JSON.parse(window.localStorage.getItem(MARKET_SNAPSHOT_KEY) ?? "null") as MarketSnapshot | null;
-    return parsed?.markets?.length && parsed.marketHistory ? parsed : null;
+    return parsed?.markets?.length && parsed.marketHistory && parsed.markets.every((market) => (parsed.marketHistory[market.symbol]?.length ?? 0) >= HISTORY_POINTS) ? parsed : null;
   } catch { return null; }
 }
 
@@ -73,7 +73,7 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
         setMarketHistory((currentHistory) => Object.fromEntries(nextMarkets.map((market) => {
           const previous = currentMarkets.find((item) => item.symbol === market.symbol)?.price ?? market.price;
           const point: PricePoint = { time: Date.now(), price: market.price, open: previous, high: Math.max(previous, market.price), low: Math.min(previous, market.price), close: market.price, volume: Math.random() * 1000 };
-          return [market.symbol, [...(currentHistory[market.symbol] ?? []), point].slice(-60)];
+          return [market.symbol, [...(currentHistory[market.symbol] ?? []), point].slice(-HISTORY_POINTS)];
         })));
         return nextMarkets;
       });
@@ -101,7 +101,7 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
     const channel = realtimeClient.channel("market-tick-stream").on("postgres_changes", { event: "INSERT", schema: "public", table: "market_ticks" }, (payload) => {
       const row = payload.new as { symbol: string; open: number; high: number; low: number; close: number; volume: number; created_at: string };
       const point = { time: new Date(row.created_at).getTime(), price: Number(row.close), open: Number(row.open), high: Number(row.high), low: Number(row.low), close: Number(row.close), volume: Number(row.volume) };
-      setMarketHistory((current) => ({ ...current, [row.symbol]: [...(current[row.symbol] ?? []), point].slice(-60) }));
+      setMarketHistory((current) => ({ ...current, [row.symbol]: [...(current[row.symbol] ?? []), point].slice(-HISTORY_POINTS) }));
       setMarkets((current) => current.map((market) => market.symbol === row.symbol ? { ...market, previousPrice: market.price, price: point.close } : market));
     }).subscribe();
     return () => { void realtimeClient.removeChannel(channel); };
