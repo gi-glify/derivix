@@ -5,6 +5,13 @@ const pages: Record<string, { title: string; description: string }> = {
   "/": { title: "Derivix — Trade beyond limits", description: "A focused trading workspace for monitoring markets, managing funds, and building disciplined execution habits." },
   "/auth/login": { title: "Sign in | Derivix", description: "Securely sign in to your Derivix trading workspace." },
   "/auth/register": { title: "Create your account | Derivix", description: "Create a Derivix account and start exploring your trading workspace." },
+  "/auth/forgot-password": { title: "Reset your password | Derivix", description: "Request secure password reset instructions." },
+  "/auth/reset-password": { title: "Set a new password | Derivix", description: "Choose a new password for your account." },
+  "/auth/verify-email": { title: "Verify your email | Derivix", description: "Confirm your email to finish setting up your account." },
+  "/auth/otp": { title: "Enter your code | Derivix", description: "Verify your email code to continue." },
+  "/auth/email-signin": { title: "Email sign in | Derivix", description: "Request a secure sign-in email." },
+  "/auth/callback": { title: "Confirming your account | Derivix", description: "Complete secure email verification." },
+  "/auth/verified": { title: "Account ready | Derivix", description: "Continue to your Derivix workspace." },
   "/app": { title: "Portfolio dashboard | Derivix", description: "Review portfolio balance, positions, market activity, and account transactions." },
   "/app/markets": { title: "Markets | Derivix", description: "Inspect interactive market charts, price action, volume, and order details." },
   "/app/trade": { title: "Trade | Derivix", description: "Review market price action and manage orders from the Derivix trading screen." },
@@ -30,6 +37,8 @@ export function SiteSeo() {
   return <Helmet>
     <html lang="en" />
     <title>{page.title}</title>
+    {pathname.startsWith("/auth/") && <meta name="robots" content="noindex, nofollow" />}
+    {pathname.startsWith("/auth/") && <meta name="referrer" content="no-referrer" />}
     <meta name="description" content={page.description} />
     <link rel="canonical" href={`${siteUrl}${pathname}`} />
     <meta property="og:site_name" content="Derivix" />

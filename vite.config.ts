@@ -11,6 +11,8 @@ export default defineConfig({
         manualChunks: {
           react: ["react", "react-dom", "react-router-dom"],
           supabase: ["@supabase/supabase-js"],
+          charts: ["lightweight-charts"],
+          motion: ["motion"],
           ui: ["aos", "lucide-react", "react-helmet-async"],
         },
       },

@@ -5,6 +5,7 @@ const config: Config = {
   content: ["./app/**/*.{js,ts,jsx,tsx,mdx}", "./components/**/*.{js,ts,jsx,tsx,mdx}", "./lib/**/*.{js,ts,jsx,tsx,mdx}"],
   theme: { 
     extend: {
+      fontFamily: { sans: ["IBM Plex Sans", "system-ui", "sans-serif"], mono: ["IBM Plex Sans", "system-ui", "sans-serif"] },
       colors: {
         brand: {
           lime: "rgb(var(--brand-lime) / <alpha-value>)",

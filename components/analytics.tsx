@@ -8,6 +8,7 @@ export function Analytics() {
   useEffect(() => {
     if (!measurementId) return;
     const load = () => {
+      if (window.location.pathname.startsWith("/auth/")) return;
       if (localStorage.getItem(CONSENT_KEY) !== "accepted") return;
       const scriptId = "derivix-google-analytics";
       if (!document.getElementById(scriptId)) {

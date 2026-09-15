@@ -1,20 +1,115 @@
-import { useState } from "react";
-import { Bot, MessageCircle, Send, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { ArrowUp, ChevronDown, MessageCircle, X } from "lucide-react";
+import SiriOrb from "@/components/smoothui/siri-orb";
+import TypewriterText from "@/components/smoothui/typewriter-text";
 
-type Message = { role: "assistant" | "user"; text: string };
+type Message = { id: string; role: "assistant" | "user"; text: string; complete: boolean };
 
 function demoAnswer(input: string) {
   const question = input.toLowerCase();
-  if (question.includes("loss") || question.includes("risk")) return "Trading can result in partial or total loss. Start small, use a stop plan, and never trade money you cannot afford to lose. Read the Trading Policy before placing an order.";
-  if (question.includes("deposit") || question.includes("fund")) return "Open Wallet from the mobile navigation or sidebar to review the deposit flow. Balances activate after a completed payment confirmation.";
-  if (question.includes("chart") || question.includes("candle")) return "Use the chart controls on Trade to switch between candles, line, area, and volume views. Prices are simulated and update every 1.5 seconds.";
-  return "I can explain the charts, simulated trading, deposits, withdrawals, account setup, and risk controls. What would you like to understand?";
+  if (question.includes("loss") || question.includes("risk")) return "Trading can result in losses. Use the Trading Policy to understand the simulation and its limits. You can review open positions and their current profit or loss under Positions.";
+  if (question.includes("withdraw")) return "Open Wallet, then Withdraw. Enter your amount and review the available balance. The app will show the request’s status under Transactions.";
+  if (question.includes("deposit") || question.includes("fund")) return "Open Wallet from the navigation to review the deposit flow. Your available balance updates after a completed payment confirmation. You can follow its status under Transactions.";
+  if (question.includes("password") || question.includes("verify") || question.includes("otp") || question.includes("account")) return "Use Forgot password on the sign-in page to request a reset email. After signup, check your inbox for the verification link. If the email includes a code, enter it on the verification screen. You can resend the email after the countdown.";
+  if (question.includes("chart") || question.includes("candle") || question.includes("market")) return "Open Markets and select Live to see a new simulated tick every 1.5 seconds. Drag the chart to explore history, scroll to zoom, or select 1H, 4H, or 1D to group candles. Fullscreen expands the chart; Escape returns to the page. The theme button switches between light and dark.";
+  return "I can help you use charts, manage simulated positions, navigate the wallet, or access your account. What would you like help with?";
 }
 
 export function Chatbot() {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
-  const [messages, setMessages] = useState<Message[]>([{ role: "assistant", text: "Hi, I’m the Derivix assistant. I can explain the platform and trading concepts, but I do not provide financial advice." }]);
-  async function send() { const text = input.trim(); if (!text) return; setMessages((current) => [...current, { role: "user", text }]); setInput(""); const endpoint = import.meta.env.VITE_AI_ASSISTANT_URL; if (endpoint) { try { const response = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: text }) }); const data = await response.json() as { message?: string; reply?: string }; setMessages((current) => [...current, { role: "assistant", text: data.reply ?? data.message ?? demoAnswer(text) }]); return; } catch { /* keep the local help response available when the AI service is unavailable */ } } setMessages((current) => [...current, { role: "assistant", text: demoAnswer(text) }]); }
-  return <div className="fixed bottom-24 right-4 z-[80] sm:bottom-6 sm:right-6"><button type="button" aria-label={open ? "Close Derivix assistant" : "Open Derivix assistant"} onClick={() => setOpen((current) => !current)} className="flex h-14 w-14 items-center justify-center rounded-full bg-brand-ink text-brand-lime shadow-[0_14px_34px_rgba(17,19,18,0.25)] transition-transform hover:scale-105 dark:bg-brand-lime dark:text-brand-ink">{open ? <X className="h-6 w-6" /> : <MessageCircle className="h-6 w-6" />}</button>{open && <section className="absolute bottom-16 right-0 flex h-[min(520px,calc(100vh-10rem))] w-[min(360px,calc(100vw-2rem))] flex-col overflow-hidden rounded-3xl border border-brand-line bg-white shadow-2xl dark:bg-dark-ink"><header className="flex items-center gap-3 border-b border-brand-line bg-brand-canvas px-4 py-4"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-lime/20 text-brand-limeDeep"><Bot className="h-5 w-5" /></span><div><p className="text-sm font-bold text-brand-ink">Derivix assistant</p><p className="text-[11px] text-brand-muted">AI-ready help desk · demo responses</p></div></header><div className="flex-1 space-y-3 overflow-y-auto p-4">{messages.map((message, index) => <div key={`${message.role}-${index}`} className={`max-w-[88%] rounded-2xl px-3 py-2.5 text-xs leading-5 ${message.role === "user" ? "ml-auto bg-brand-ink text-white" : "bg-brand-canvas text-brand-ink"}`}>{message.text}</div>)}</div><div className="border-t border-brand-line p-3"><div className="flex items-center gap-2 rounded-xl border border-brand-line bg-brand-canvas p-1"><input value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") send(); }} placeholder="Ask about Derivix..." className="min-w-0 flex-1 bg-transparent px-2 py-2 text-xs text-brand-ink outline-none" /><button type="button" aria-label="Send message" onClick={send} className="rounded-lg bg-brand-lime p-2 text-brand-ink"><Send className="h-4 w-4" /></button></div><p className="mt-2 text-[10px] leading-4 text-brand-muted">Educational support only. The assistant is not a broker or financial adviser.</p></div></section>}</div>;
+  const [pending, setPending] = useState(false);
+  const [typingId, setTypingId] = useState<string | null>(null);
+  const [notice, setNotice] = useState("");
+  const [messages, setMessages] = useState<Message[]>([{ id: "welcome", role: "assistant", text: "Hi, I’m your Derivix assistant. Ask me about the charts, your account, or finding your way around.", complete: true }]);
+  const reducedMotion = useReducedMotion();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const launcherRef = useRef<HTMLButtonElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const requestRef = useRef<AbortController | null>(null);
+  const busyRef = useRef(false);
+  const openRef = useRef(false);
+  const followRef = useRef(true);
+  const busy = pending || typingId !== null;
+  const orbState = pending ? "thinking" : typingId ? "streaming" : "idle";
+
+  const finishTyping = useCallback((id: string) => {
+    setMessages(current => current.map(message => message.id === id ? { ...message, complete: true } : message));
+    setTypingId(null);
+    busyRef.current = false;
+  }, []);
+  const close = useCallback(() => {
+    openRef.current = false;
+    setOpen(false);
+    setMessages(current => current.map(message => ({ ...message, complete: true })));
+    setTypingId(null);
+    busyRef.current = requestRef.current !== null;
+    launcherRef.current?.focus();
+  }, []);
+  const show = useCallback(() => { openRef.current = true; followRef.current = true; setOpen(true); }, []);
+
+  useEffect(() => {
+    window.addEventListener("derivix-open-assistant", show);
+    return () => { window.removeEventListener("derivix-open-assistant", show); requestRef.current?.abort(); };
+  }, [show]);
+  useEffect(() => {
+    if (!open) return;
+    const frame = requestAnimationFrame(() => { inputRef.current?.focus(); if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; });
+    const escape = (event: KeyboardEvent) => { if (event.key === "Escape") close(); };
+    window.addEventListener("keydown", escape);
+    const observer = new ResizeObserver(() => {
+      if (followRef.current && scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    });
+    if (contentRef.current) observer.observe(contentRef.current);
+    return () => { cancelAnimationFrame(frame); observer.disconnect(); window.removeEventListener("keydown", escape); };
+  }, [open, close]);
+
+  async function send(text = input.trim()) {
+    if (!text || busyRef.current) return;
+    busyRef.current = true;
+    followRef.current = true;
+    setPending(true); setInput(""); setNotice("");
+    setMessages(current => [...current, { id: crypto.randomUUID(), role: "user", text, complete: true }]);
+    const endpoint = import.meta.env.VITE_AI_ASSISTANT_URL;
+    let reply = demoAnswer(text);
+    if (endpoint) {
+      const controller = new AbortController();
+      requestRef.current = controller;
+      const timeout = setTimeout(() => controller.abort(), 15000);
+      try {
+        const response = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: text }), signal: controller.signal });
+        if (!response.ok) throw new Error("Assistant service unavailable");
+        const data: { message?: unknown; reply?: unknown } = await response.json();
+        const answer = data.reply ?? data.message;
+        if (typeof answer !== "string" || !answer.trim()) throw new Error("Empty assistant response");
+        reply = answer.trim().slice(0, 12000);
+      } catch { setNotice("The live assistant is unavailable. Here’s help from the platform guide."); }
+      finally { clearTimeout(timeout); requestRef.current = null; }
+    }
+    const id = crypto.randomUUID();
+    const animate = openRef.current && !reducedMotion;
+    setMessages(current => [...current, { id, role: "assistant", text: reply, complete: !animate }]);
+    setPending(false);
+    setTypingId(animate ? id : null);
+    if (!animate) busyRef.current = false;
+  }
+  function submit(event: FormEvent) { event.preventDefault(); void send(); }
+
+  return <div className="assistant-widget">
+    <button ref={launcherRef} type="button" aria-label={open ? "Close Derivix assistant" : "Open Derivix assistant"} aria-expanded={open} aria-controls="derivix-chat" onClick={() => open ? close() : show()} className="assistant-launcher">{open ? <ChevronDown size={23} /> : <span aria-hidden="true"><SiriOrb size="42px" state="idle" /></span>}</button>
+    <AnimatePresence>{open && <motion.section id="derivix-chat" role="dialog" aria-label="Derivix assistant" className="assistant-panel" initial={reducedMotion ? false : { opacity: 0, y: 16, scale: .97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 10, scale: .98 }} transition={{ duration: reducedMotion ? 0 : .2 }}>
+      <header className="assistant-header"><span aria-hidden="true"><SiriOrb size="38px" state={orbState} /></span><div><h2>Derivix assistant</h2><p>{pending ? "Thinking…" : typingId ? "Writing a reply…" : "Your platform companion"}</p></div><button type="button" onClick={close} aria-label="Close chat"><X size={18} /></button></header>
+      <div ref={scrollRef} className="assistant-messages" onScroll={event => { const node = event.currentTarget; followRef.current = node.scrollHeight - node.scrollTop - node.clientHeight < 60; }}>
+        <div ref={contentRef} className="assistant-message-content" role="log" aria-label="Conversation" aria-live="polite" aria-relevant="additions">
+          <div className="assistant-intro"><span aria-hidden="true"><MessageCircle size={15} /></span> A little clarity goes a long way.</div>
+          {messages.map(message => <div key={message.id} className={`assistant-message assistant-message--${message.role}`}><span className="sr-only">{message.role === "user" ? "You: " : "Derivix: "}</span>{message.complete ? message.text : <><span className="sr-only">{message.text}</span><span aria-hidden="true"><TypewriterText speed={Math.max(2, Math.min(14, 4500 / message.text.length))} onComplete={() => finishTyping(message.id)}>{message.text}</TypewriterText><span className="assistant-caret" /></span></>}</div>)}
+          {pending && <div className="assistant-thinking" role="status"><span /><span /><span /><span className="sr-only">Thinking about your message</span></div>}
+          {messages.length === 1 && <div className="assistant-suggestions">{["How do I use the chart?", "Help with my account", "How do I add funds?"].map(question => <button key={question} type="button" onClick={() => void send(question)} disabled={busy}>{question}</button>)}</div>}
+        </div>
+      </div>
+      <footer className="assistant-footer">{notice && <p className="assistant-notice" role="status">{notice}</p>}<form onSubmit={submit}><label htmlFor="assistant-input" className="sr-only">Message Derivix assistant</label><input ref={inputRef} id="assistant-input" value={input} onChange={event => setInput(event.target.value)} placeholder="Ask about Derivix…" maxLength={2000} autoComplete="off" /><button type="submit" disabled={busy || !input.trim()} aria-label="Send message"><ArrowUp size={18} /></button></form><p>Platform guidance · Not financial advice</p></footer>
+    </motion.section>}</AnimatePresence>
+  </div>;
 }

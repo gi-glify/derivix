@@ -2,6 +2,8 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { userFromSession } from "./session";
+import { normalizeEmail } from "./auth";
+import { callbackUrl } from "./email-flows";
 
 interface AuthContextType {
   session: Session | null;
@@ -9,7 +11,7 @@ interface AuthContextType {
   loading: boolean;
   configurationError: string | null;
   signIn: (email: string, password: string) => Promise<{ error?: string }>;
-  signUp: (email: string, password: string, fullName: string) => Promise<{ error?: string }>;
+  signUp: (email: string, password: string, fullName: string) => Promise<{ error?: string; needsVerification?: boolean }>;
   signOut: () => Promise<void>;
   signInWithProvider: (provider: "google" | "facebook" | "x") => Promise<{ error?: string }>;
   updateProfile: (input: { fullName: string; phone: string; country: string }) => Promise<{ error?: string }>;
@@ -50,16 +52,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function signIn(email: string, password: string) {
     if (!supabase) return { error: configurationMessage };
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabase.auth.signInWithPassword({ email: normalizeEmail(email), password });
     return error ? { error: error.message } : {};
   }
   async function signUp(email: string, password: string, fullName: string) {
     if (!supabase) return { error: configurationMessage };
-    const { error } = await supabase.auth.signUp({ email, password, options: { data: { full_name: fullName } } });
-    return error ? { error: error.message } : {};
+    const { data, error } = await supabase.auth.signUp({ email: normalizeEmail(email), password, options: { data: { full_name: fullName.trim() }, emailRedirectTo: callbackUrl("signup") } });
+    return error ? { error: error.message } : { needsVerification: !data.session };
   }
   async function signOut() { if (supabase) await supabase.auth.signOut(); setSession(null); setUser(null); }
-  async function signInWithProvider(provider: "google" | "facebook" | "x") { if (!supabase) return { error: configurationMessage }; const { error } = await supabase.auth.signInWithOAuth({ provider: provider === "x" ? "twitter" : provider, options: { redirectTo: window.location.origin } }); return error ? { error: error.message } : {}; }
+  async function signInWithProvider(provider: "google" | "facebook" | "x") { if (!supabase) return { error: configurationMessage }; const { error } = await supabase.auth.signInWithOAuth({ provider: provider === "x" ? "twitter" : provider, options: { redirectTo: `${window.location.origin}/auth/callback?flow=signin` } }); return error ? { error: error.message } : {}; }
   async function updateProfile(input: { fullName: string; phone: string; country: string }) { if (!supabase || !user) return { error: configurationMessage }; const { error: profileError } = await supabase.from("profiles").update({ full_name: input.fullName.trim(), phone: input.phone.trim() || null, country: input.country.trim() }).eq("id", user.id); if (profileError) return { error: profileError.message }; const { data, error: authError } = await supabase.auth.updateUser({ data: { full_name: input.fullName.trim() } }); if (!authError && data.user) setUser(data.user); return authError ? { error: authError.message } : {}; }
 
   return <AuthContext.Provider value={{ session, user, loading, configurationError, signIn, signUp, signOut, signInWithProvider, updateProfile }}>{children}</AuthContext.Provider>;

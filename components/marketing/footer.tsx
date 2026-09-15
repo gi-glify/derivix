@@ -53,6 +53,7 @@ export function Footer() {
           <a href="#" className="hover:text-brand-ink transition-colors">LinkedIn</a>
         </div>
       </div>
+      <p className="mx-auto mt-5 max-w-7xl text-center text-[10px] text-brand-muted">TradingView Lightweight Charts™ · Copyright (с) 2025 <a href="https://www.tradingview.com/" target="_blank" rel="noreferrer" className="underline underline-offset-2">TradingView, Inc.</a></p>
     </footer>
   );
 }

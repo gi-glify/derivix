@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { moveMarket, refreshPosition, validateOrder } from "./trading";
 import { completedBalance, hasCompletedDeposit, validateWithdrawal } from "./ledger";
 import { approveWithdrawal as approveWithdrawalEntry, reviewKyc as reviewKycState } from "./admin";
@@ -16,12 +16,15 @@ const initialMarkets: Market[] = [
 ];
 
 const MARKET_SNAPSHOT_KEY = "derivix-market-snapshot-v1";
-type MarketSnapshot = { markets: Market[]; marketHistory: Record<string, PricePoint[]> };
+type MarketSnapshot = { version?: number; markets: Market[]; marketHistory: Record<string, PricePoint[]> };
 function readMarketSnapshot(): MarketSnapshot | null {
   if (typeof window === "undefined") return null;
   try {
     const parsed = JSON.parse(window.localStorage.getItem(MARKET_SNAPSHOT_KEY) ?? "null") as MarketSnapshot | null;
-    return parsed?.markets?.length && parsed.marketHistory && parsed.markets.every((market) => (parsed.marketHistory[market.symbol]?.length ?? 0) >= HISTORY_POINTS) ? parsed : null;
+    if (!parsed?.markets?.length || !parsed.marketHistory) return null;
+    if (parsed.version === 2 && parsed.markets.every(market => (parsed.marketHistory[market.symbol]?.length ?? 0) >= HISTORY_POINTS)) return parsed;
+    // Replace only old illustrative history; keep current quotes and account state intact.
+    return { version: 2, markets: parsed.markets, marketHistory: Object.fromEntries(parsed.markets.map(market => [market.symbol, seedMarketHistory(market, Date.now(), Math.floor(Math.random() * 4294967296))])) };
   } catch { return null; }
 }
 
@@ -50,47 +53,46 @@ type DemoContextValue = {
 const DemoContext = createContext<DemoContextValue | null>(null);
 
 export function DemoProvider({ children }: { children: React.ReactNode }) {
-  const [markets, setMarkets] = useState<Market[]>(() => readMarketSnapshot()?.markets ?? initialMarkets);
-  const [marketHistory, setMarketHistory] = useState<Record<string, PricePoint[]>>(() => readMarketSnapshot()?.marketHistory ?? Object.fromEntries(initialMarkets.map((market) => [market.symbol, seedMarketHistory(market)])));
+  const [initialSnapshot] = useState(() => readMarketSnapshot() ?? { version: 2, markets: initialMarkets, marketHistory: Object.fromEntries(initialMarkets.map(market => [market.symbol, seedMarketHistory(market, Date.now(), Math.floor(Math.random() * 4294967296))])) });
+  const [markets, setMarkets] = useState<Market[]>(initialSnapshot.markets);
+  const [marketHistory, setMarketHistory] = useState<Record<string, PricePoint[]>>(initialSnapshot.marketHistory);
+  const marketsRef = useRef(markets);
+  marketsRef.current = markets;
   const [positions, setPositions] = useState<Position[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [kyc, setKyc] = useState<KycProfile>({ status: "NOT_STARTED", fullName: "", country: "", documentType: "National ID", documentNumber: "" });
 
   useEffect(() => {
-    try { window.localStorage.setItem(MARKET_SNAPSHOT_KEY, JSON.stringify({ markets, marketHistory } satisfies MarketSnapshot)); } catch { /* storage may be unavailable in private browsing */ }
+    try { window.localStorage.setItem(MARKET_SNAPSHOT_KEY, JSON.stringify({ version: 2, markets, marketHistory } satisfies MarketSnapshot)); } catch { /* storage may be unavailable in private browsing */ }
   }, [markets, marketHistory]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
-      setMarkets((currentMarkets) => {
-        const evolved = currentMarkets.map((market) => { const next = evolveMarket(market); return { ...next, market: moveMarket(next.market, next.delta) }; });
-        const nextMarkets = evolved.map(({ market }) => market);
-        setPositions((currentPositions) => currentPositions.map((position) => {
-          const market = nextMarkets.find((item) => item.symbol === position.symbol);
-          return market ? refreshPosition(position, market) : position;
-        }));
-        setMarketHistory((currentHistory) => Object.fromEntries(nextMarkets.map((market) => {
-          const previous = currentMarkets.find((item) => item.symbol === market.symbol)?.price ?? market.price;
-          const point: PricePoint = { time: Date.now(), price: market.price, open: previous, high: Math.max(previous, market.price), low: Math.min(previous, market.price), close: market.price, volume: Math.random() * 1000 };
-          return [market.symbol, [...(currentHistory[market.symbol] ?? []), point].slice(-HISTORY_POINTS)];
-        })));
-        return nextMarkets;
+      const currentMarkets = marketsRef.current;
+      const nextMarkets = currentMarkets.map(market => { const next = evolveMarket(market); return moveMarket(next.market, next.delta); });
+      const now = Date.now();
+      const ticks = nextMarkets.map((market, index) => {
+        const previous = currentMarkets[index].price;
+        return { symbol: market.symbol, point: { time: now, price: market.price, open: previous, high: Math.max(previous, market.price), low: Math.min(previous, market.price), close: market.price, volume: 100 + Math.random() * 900 } satisfies PricePoint };
       });
+      marketsRef.current = nextMarkets;
+      setMarkets(nextMarkets);
+      setPositions(current => current.map(position => { const market = nextMarkets.find(item => item.symbol === position.symbol); return market ? refreshPosition(position, market) : position; }));
+      setMarketHistory(current => Object.fromEntries(ticks.map(({ symbol, point }) => [symbol, [...(current[symbol] ?? []), point].slice(-HISTORY_POINTS)])));
+
     }, 1500);
     return () => window.clearInterval(timer);
   }, []);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
-      setMarkets((current) => {
-        const market = current[Math.floor(Math.random() * current.length)];
-        if (!market) return current;
-        const change = market.price - market.previousPrice;
-        const notification: AppNotification = { id: crypto.randomUUID(), title: `${market.symbol} market pulse`, body: `${change >= 0 ? "Rising" : "Falling"} ${Math.abs(change).toFixed(4)} · simulated tick`, kind: "market", createdAt: new Date().toISOString(), read: false };
-        setNotifications((items) => [notification, ...items].slice(0, 20));
-        return current;
-      });
+      const current = marketsRef.current;
+      const market = current[Math.floor(Math.random() * current.length)];
+      if (!market) return;
+      const change = market.price - market.previousPrice;
+      const notification: AppNotification = { id: crypto.randomUUID(), title: `${market.symbol} market pulse`, body: `${change >= 0 ? "Rising" : "Falling"} ${Math.abs(change).toFixed(4)} · simulated tick`, kind: "market", createdAt: new Date().toISOString(), read: false };
+      setNotifications(items => [notification, ...items].slice(0, 20));
     }, 9000);
     return () => window.clearInterval(timer);
   }, []);

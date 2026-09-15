@@ -1,0 +1,38 @@
+Derivix email authentication setup
+
+The frontend uses the existing Supabase project. No hosted project settings were changed.
+
+1. In Authentication > URL Configuration, set Site URL to the deployed site's origin.
+   Add these Redirect URLs (replace the origin with your actual deployment):
+   https://derivix.com/auth/callback?flow=signup
+   https://derivix.com/auth/callback?flow=recovery
+   https://derivix.com/auth/callback?flow=signin
+   For local testing, add the same three URLs with http://127.0.0.1:5173 as the origin.
+
+2. Enable Confirm email in the email provider settings to require signup verification.
+   If it is disabled, Supabase returns a session and the app opens the workspace immediately.
+
+3. In Authentication > Email Templates, use:
+   Confirm signup: templates/confirm-signup.html
+   Reset password: templates/reset-password.html
+   Magic link: templates/email-signin.html
+   These include both {{ .ConfirmationURL }} and {{ .Token }} so either a link or a code works.
+   Existing default link-only templates still work; they won't display an OTP until updated.
+
+4. Configure SMTP for delivery to your users. Supabase's default email service restricts recipients
+   and applies low rate limits. Project OTP length, expiry and rate limits remain server-controlled.
+
+Frontend routes:
+/auth/login             Password sign-in, password toggle, recovery and email sign-in links
+/auth/register          Account creation, confirmation password, password toggles
+/auth/verify-email      Signup email notification, code verification and resend
+/auth/forgot-password   Send recovery email
+/auth/email-signin      Send sign-in link/code for an existing account
+/auth/otp?flow=recovery Verify recovery code before choosing a new password
+/auth/otp?flow=signin   Verify sign-in code
+/auth/callback          Consume email links and show expired-link errors
+/auth/reset-password   Save new password with an authenticated recovery session
+/auth/verified         Verification success and workspace link
+
+Reference: https://supabase.com/docs/guides/auth/auth-email-templates
+Reference: https://supabase.com/docs/guides/auth/passwords

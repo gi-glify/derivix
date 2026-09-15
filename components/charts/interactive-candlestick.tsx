@@ -1,52 +1,172 @@
-import { useEffect, useMemo, useState, type MouseEvent } from "react";
-import { Download, Eye, EyeOff, Minus, Plus, RotateCcw } from "lucide-react";
+import { createPortal } from "react-dom";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { AreaSeries, CandlestickSeries, ColorType, createChart, CrosshairMode, HistogramSeries, LineSeries, LineStyle, type IChartApi, type ISeriesApi, type Time } from "lightweight-charts";
+import { Download, Maximize2, Minus, Plus, RotateCcw } from "lucide-react";
 import type { PricePoint } from "@/lib/demo/types";
-import { calculateMovingAverage, priceBounds, visibleWindow } from "./interactive-candlestick-utils";
+import { useTheme } from "@/lib/ui/theme";
+import AnimatedTabs from "@/components/smoothui/animated-tabs";
+import { calculateMovingAverage } from "./interactive-candlestick-utils";
+import { aggregateCandles, type ChartCandle } from "./chart-data";
 
-const WIDTH = 1000;
-const HEIGHT = 470;
-const PLOT = { left: 54, right: 930, top: 22, bottom: 320 };
-const VOLUME = { top: 344, bottom: 398 };
+export type ChartMode = "candles" | "line" | "area";
+const intervals = [{ id: "0", label: "Live" }, { id: "3600", label: "1H" }, { id: "14400", label: "4H" }, { id: "86400", label: "1D" }];
+const up = "#089981";
+const down = "#f23645";
+const price = (value: number) => value.toLocaleString("en-US", { minimumFractionDigits: value > 100 ? 2 : 4, maximumFractionDigits: value > 100 ? 2 : 5 });
 
-function scaleY(value: number, min: number, span: number) { return PLOT.bottom - ((value - min) / span) * (PLOT.bottom - PLOT.top); }
-function formatPrice(value: number) { return value.toLocaleString(undefined, { maximumFractionDigits: 4 }); }
+type ChartState = {
+  chart: IChartApi;
+  candles: ISeriesApi<"Candlestick">;
+  line: ISeriesApi<"Line">;
+  area: ISeriesApi<"Area">;
+  volume: ISeriesApi<"Histogram">;
+  average20: ISeriesApi<"Line">;
+  average50: ISeriesApi<"Line">;
+};
 
-export function InteractiveCandlestickChart({ points }: { points: PricePoint[] }) {
-  const [movingAverageWindow, setMovingAverageWindow] = useState<20 | 50 | null>(20);
-  const [annotations, setAnnotations] = useState(true);
-  const [windowSize, setWindowSize] = useState(168);
-  const [zoomStart, setZoomStart] = useState(0);
-  const [followingLatest, setFollowingLatest] = useState(true);
-  const [hover, setHover] = useState<{ index: number; x: number; y: number } | null>(null);
+export function InteractiveCandlestickChart({ points, symbol = "Market", mode = "candles", compact = false }: { points: PricePoint[]; symbol?: string; mode?: ChartMode; compact?: boolean }) {
+  const { theme } = useTheme();
+  const [interval, setInterval] = useState(compact ? "3600" : "0");
+  const [averages, setAverages] = useState(false);
+  const [showVolume, setShowVolume] = useState(true);
+  const [hoverTime, setHoverTime] = useState<number | null>(null);
+  const [expanded, setExpanded] = useState(false);
+  const container = useRef<HTMLDivElement>(null);
+  const wrapper = useRef<HTMLDivElement>(null);
+  const api = useRef<ChartState | null>(null);
+  const previous = useRef<ChartCandle[]>([]);
+  const candles = useMemo(() => aggregateCandles(points, Math.max(1, Number(interval))), [points, interval]);
+  const selected = candles.find(point => point.time === hoverTime) ?? candles.at(-1);
+
   useEffect(() => {
-    const handleWheelZoom = (event: WheelEvent) => {
-      const target = event.target;
-      if (!(target instanceof Element) || !target.closest('svg[aria-label^="Interactive live candlestick"]')) return;
-      event.preventDefault();
-      setWindowSize((current) => event.deltaY < 0 ? Math.max(12, current - 12) : Math.min(points.length, current + 12));
-    };
-    window.addEventListener("wheel", handleWheelZoom, { passive: false });
-    return () => window.removeEventListener("wheel", handleWheelZoom);
-  }, [points.length]);
-  const size = Math.min(windowSize, Math.max(12, points.length));
-  const maxStart = Math.max(points.length - size, 0);
-  const effectiveStart = followingLatest ? maxStart : Math.min(zoomStart, maxStart);
-  const windowPoints = useMemo(() => visibleWindow(points, effectiveStart, size), [points, effectiveStart, size]);
-  const values = windowPoints.flatMap((point) => [point.high, point.low]);
-  const { min, max, span } = priceBounds(values.length ? values : [0, 1]);
-  const movingAverage = movingAverageWindow ? calculateMovingAverage(windowPoints.map((point) => point.close), movingAverageWindow) : [];
-  const maxVolume = Math.max(...windowPoints.map((point) => point.volume), 1);
-  const step = windowPoints.length > 1 ? (PLOT.right - PLOT.left) / windowPoints.length : PLOT.right - PLOT.left;
-  const handleMove = (event: MouseEvent<SVGSVGElement>) => {
-    const rect = event.currentTarget.getBoundingClientRect();
-    const chartX = ((event.clientX - rect.left) / rect.width) * WIDTH;
-    const index = Math.max(0, Math.min(windowPoints.length - 1, Math.floor((chartX - PLOT.left) / step)));
-    if (chartX < PLOT.left || chartX > PLOT.right || !windowPoints[index]) return setHover(null);
-    setHover((current) => current?.index === index ? current : { index, x: PLOT.left + index * step + step / 2, y: scaleY(windowPoints[index].close, min, span) });
-  };
-  function downloadData() { const csv = ["time,open,high,low,close,volume", ...points.map((point) => [new Date(point.time).toISOString(), point.open, point.high, point.low, point.close, point.volume].join(","))].join("\n"); const link = document.createElement("a"); link.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" })); link.download = "derivix-market-data.csv"; link.click(); URL.revokeObjectURL(link.href); }
-  return <div className="relative h-full min-h-[390px] w-full" data-aos="fade-up">
-    <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-brand-line bg-brand-canvas px-2 py-1.5"><div className="flex min-w-0 flex-wrap items-center gap-1"><span className="px-2 text-[10px] font-bold uppercase tracking-[0.14em] text-brand-muted">Range</span>{[[168,"1W"],[720,"1M"],[2160,"3M"],[2880,"4M"]].map(([range, label]) => <button key={label} type="button" onClick={() => { setWindowSize(Math.min(Number(range), points.length)); setFollowingLatest(true); }} className={`rounded-lg px-2 py-1.5 text-xs font-bold ${windowSize === Math.min(Number(range), points.length) && followingLatest ? "bg-brand-ink text-white" : "text-brand-muted hover:bg-brand-line"}`}>{label}</button>)}<button type="button" onClick={() => setFollowingLatest(true)} className={`rounded-lg px-2 py-1.5 text-xs font-bold ${followingLatest ? "bg-brand-lime/30 text-brand-limeDeep" : "text-brand-muted hover:bg-brand-line"}`}>Present</button><select value={movingAverageWindow ?? "none"} onChange={(event) => setMovingAverageWindow(event.target.value === "none" ? null : Number(event.target.value) as 20 | 50)} className="rounded-lg bg-transparent px-2 py-1.5 text-xs font-bold text-brand-ink"><option value="none">MA off</option><option value="20">MA 20</option><option value="50">MA 50</option></select><button type="button" onClick={() => setAnnotations((value) => !value)} className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-bold text-brand-muted hover:bg-brand-line">{annotations ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}Marks</button></div><div className="flex items-center gap-1"><button type="button" onClick={() => setWindowSize((value) => Math.min(points.length, value + 12))} className="rounded-lg p-1.5 text-brand-muted hover:bg-brand-line" aria-label="Zoom out"><Minus className="h-3.5 w-3.5" /></button><button type="button" onClick={() => setWindowSize((value) => Math.max(12, value - 12))} className="rounded-lg p-1.5 text-brand-muted hover:bg-brand-line" aria-label="Zoom in"><Plus className="h-3.5 w-3.5" /></button><button type="button" onClick={() => { setZoomStart(0); setFollowingLatest(true); setWindowSize(Math.min(168, points.length)); }} className="rounded-lg p-1.5 text-brand-muted hover:bg-brand-line" aria-label="Reset chart zoom"><RotateCcw className="h-3.5 w-3.5" /></button><button type="button" onClick={downloadData} className="rounded-lg p-1.5 text-brand-muted hover:bg-brand-line" aria-label="Download chart data"><Download className="h-3.5 w-3.5" /></button></div></div>
-    <div className="relative h-[calc(100%-52px)] min-h-[330px] overflow-hidden rounded-xl"><svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} role="img" aria-label="Interactive live candlestick chart with grid, OHLC tooltip, moving average, volume and zoom" className="h-full w-full" onMouseMove={handleMove} onMouseLeave={() => setHover(null)}><rect width={WIDTH} height={HEIGHT} fill="transparent" />{[0, 1, 2, 3, 4, 5].map((line) => { const y = PLOT.top + (line / 5) * (PLOT.bottom - PLOT.top); return <line key={`h-${line}`} x1={PLOT.left} x2={PLOT.right} y1={y} y2={y} stroke="currentColor" className="text-brand-line" strokeDasharray="3 5" />; })}{Array.from({ length: 9 }, (_, index) => { const x = PLOT.left + (index / 8) * (PLOT.right - PLOT.left); return <line key={`v-${index}`} x1={x} x2={x} y1={PLOT.top} y2={VOLUME.bottom} stroke="currentColor" className="text-brand-line" strokeDasharray="3 5" />; })}<line x1={PLOT.left} x2={PLOT.right} y1={VOLUME.top - 9} y2={VOLUME.top - 9} stroke="currentColor" className="text-brand-line" />{[0, 1, 2, 3, 4].map((index) => <text key={`axis-${index}`} x={PLOT.right + 10} y={PLOT.top + (index / 4) * (PLOT.bottom - PLOT.top) + 4} className="fill-brand-muted text-[12px]">{formatPrice(max - (index / 4) * span)}</text>)}{windowPoints.map((point, index) => { const center = PLOT.left + index * step + step / 2; const bullish = point.close >= point.open; const color = bullish ? "#83b92d" : "#d16e6e"; const bodyTop = scaleY(Math.max(point.open, point.close), min, span); const bodyBottom = scaleY(Math.min(point.open, point.close), min, span); return <g key={`${point.time}-${index}`}><line x1={center} x2={center} y1={scaleY(point.high, min, span)} y2={scaleY(point.low, min, span)} stroke={color} strokeWidth="1.35" /><rect x={center - Math.max(2.5, step * 0.22)} y={bodyTop} width={Math.max(5, step * 0.44)} height={Math.max(2, bodyBottom - bodyTop)} rx="1" fill={color} />{annotations && index === Math.floor(windowPoints.length * 0.65) && <circle cx={center} cy={scaleY(point.high, min, span) - 9} r="4" fill="#42a5f5" />}</g>; })}{movingAverageWindow && <path d={movingAverage.map((value, index) => value === null ? "" : `${index === 0 || movingAverage[index - 1] === null ? "M" : "L"} ${PLOT.left + index * step + step / 2} ${scaleY(value, min, span)}`).join(" ")} fill="none" stroke="#42a5f5" strokeWidth="2.5" strokeLinecap="round" />}{windowPoints.map((point, index) => { const center = PLOT.left + index * step + step / 2; const bullish = point.close >= point.open; return <rect key={`volume-${point.time}-${index}`} x={center - Math.max(2, step * 0.2)} y={VOLUME.bottom - (point.volume / maxVolume) * (VOLUME.bottom - VOLUME.top)} width={Math.max(4, step * 0.4)} height={(point.volume / maxVolume) * (VOLUME.bottom - VOLUME.top)} fill={bullish ? "#83b92d" : "#d16e6e"} opacity=".75" rx="1" />; })}{hover && <><line x1={hover.x} x2={hover.x} y1={PLOT.top} y2={VOLUME.bottom} stroke="#42a5f5" strokeDasharray="4 4" /><line x1={PLOT.left} x2={PLOT.right} y1={hover.y} y2={hover.y} stroke="#42a5f5" strokeDasharray="4 4" /><circle cx={hover.x} cy={hover.y} r="4" fill="#42a5f5" /></>}</svg>{hover && <div className="pointer-events-none absolute left-3 top-3 rounded-lg border border-brand-line bg-brand-ink/95 px-3 py-2 text-[11px] leading-5 text-white shadow-lg"><p className="font-bold text-brand-lime">{new Date(windowPoints[hover.index].time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</p><p>O: {formatPrice(windowPoints[hover.index].open)} · H: {formatPrice(windowPoints[hover.index].high)}</p><p>L: {formatPrice(windowPoints[hover.index].low)} · C: {formatPrice(windowPoints[hover.index].close)}</p><p>V: {windowPoints[hover.index].volume.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p></div>}</div><div className="mt-1 px-2"><input aria-label="Chart zoom" type="range" min="0" max={maxStart} value={followingLatest ? maxStart : Math.min(zoomStart, maxStart)} onChange={(event) => { setFollowingLatest(false); setZoomStart(Number(event.target.value)); }} className="h-2 w-full accent-[#83b92d]" /><div className="flex justify-between text-[10px] text-brand-muted"><span>{windowPoints[0] ? new Date(windowPoints[0].time).toLocaleDateString([], { month: "short", day: "numeric" }) : ""}</span><span>Drag to zoom through history</span><span>{windowPoints.at(-1) ? new Date(windowPoints.at(-1)!.time).toLocaleDateString([], { month: "short", day: "numeric" }) : ""}</span></div></div></div>
-  ;
+    if (!container.current) return;
+    const chart = createChart(container.current, {
+      autoSize: true,
+      layout: { background: { type: ColorType.Solid, color: "transparent" }, fontFamily: '"IBM Plex Sans", sans-serif', fontSize: 11, attributionLogo: true },
+      crosshair: { mode: CrosshairMode.Normal, vertLine: { color: "#86968f", labelBackgroundColor: "#34443d" }, horzLine: { color: "#86968f", labelBackgroundColor: "#34443d" } },
+      rightPriceScale: { borderVisible: false, minimumWidth: compact ? 65 : 72, scaleMargins: { top: 0.08, bottom: 0.14 } },
+      timeScale: { borderVisible: false, timeVisible: true, secondsVisible: false, rightOffset: 6, barSpacing: 6, fixLeftEdge: true },
+      handleScroll: { vertTouchDrag: false },
+    });
+    const candleSeries = chart.addSeries(CandlestickSeries, { upColor: up, downColor: down, borderVisible: false, wickUpColor: up, wickDownColor: down });
+    const line = chart.addSeries(LineSeries, { color: up, lineWidth: 1 });
+    const area = chart.addSeries(AreaSeries, { lineColor: up, topColor: "rgba(37,168,134,.22)", bottomColor: "rgba(37,168,134,0)", lineWidth: 1 });
+    const average20 = chart.addSeries(LineSeries, { color: "#c4a05c", lineWidth: 1, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
+    const average50 = chart.addSeries(LineSeries, { color: "#7f8de0", lineWidth: 1, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
+    const volume = chart.addSeries(HistogramSeries, { priceFormat: { type: "volume" }, priceLineVisible: false, lastValueVisible: false, priceScaleId: "volume" });
+    volume.priceScale().applyOptions({ scaleMargins: { top: 0.84, bottom: 0 }, borderVisible: false });
+    api.current = { chart, candles: candleSeries, line, area, average20, average50, volume };
+    const crosshair = (event: { time?: Time }) => setHoverTime(typeof event.time === "number" ? event.time : null);
+    chart.subscribeCrosshairMove(crosshair);
+    previous.current = [];
+    return () => { chart.unsubscribeCrosshairMove(crosshair); chart.remove(); api.current = null; previous.current = []; };
+  }, [compact, expanded]);
+
+  useEffect(() => {
+    const state = api.current;
+    if (!state) return;
+    const dark = theme === "dark";
+    state.chart.applyOptions({
+      layout: { textColor: dark ? "#929599" : "#788780", background: { type: ColorType.Solid, color: dark ? "#0f0f0f" : "#ffffff" } },
+      grid: { vertLines: { color: dark ? "#252525" : "#e7ece9", style: LineStyle.Dotted }, horzLines: { color: dark ? "#252525" : "#e7ece9", style: LineStyle.Dotted } },
+    });
+  }, [theme, compact, expanded]);
+
+  useEffect(() => {
+    const state = api.current;
+    if (!state) return;
+    state.chart.timeScale().applyOptions({ secondsVisible: interval === "0" });
+    const old = previous.current;
+    const range = state.chart.timeScale().getVisibleLogicalRange();
+    const isFollowing = !range || range.to >= old.length - 1;
+    state.candles.setData(candles);
+    const closes = candles.map(c => ({ time: c.time, value: c.close }));
+    state.line.setData(closes);
+    state.area.setData(closes);
+    state.volume.setData(candles.map(c => ({ time: c.time, value: c.volume, color: c.close >= c.open ? "rgba(8,153,129,.40)" : "rgba(242,54,69,.40)" })));
+    for (const [size, series] of [[20, state.average20], [50, state.average50]] as const) {
+      series.setData(calculateMovingAverage(candles.map(c => c.close), size).flatMap((value, i) => value === null ? [] : [{ time: candles[i].time, value }]));
+    }
+    const precision = (candles.at(-1)?.close ?? 0) > 100 ? 2 : 5;
+    for (const series of [state.candles, state.line, state.area]) series.applyOptions({ priceFormat: { type: "price", precision, minMove: 10 ** -precision } });
+    if (!old.length && candles.length) {
+      state.chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, candles.length - (compact ? 90 : Math.max(60, Math.floor((container.current?.clientWidth ?? 1000) / 7)))), to: candles.length + 5 });
+    } else if (range && candles.length) {
+      const shift = old[0] ? candles.findIndex(c => c.time === old[0].time) : 0;
+      if (isFollowing) {
+        const to = candles.length + 5;
+        state.chart.timeScale().setVisibleLogicalRange({ from: to - (range.to - range.from), to });
+      } else {
+        const removed = old.findIndex(c => c.time === candles[0]?.time);
+        const offset = shift >= 0 ? shift : -Math.max(0, removed);
+        state.chart.timeScale().setVisibleLogicalRange({ from: range.from + offset, to: range.to + offset });
+      }
+    }
+    previous.current = candles;
+  }, [candles, compact, expanded, interval]);
+
+  useEffect(() => {
+    const state = api.current;
+    if (!state) return;
+    state.candles.applyOptions({ visible: mode === "candles" });
+    state.line.applyOptions({ visible: mode === "line" });
+    state.area.applyOptions({ visible: mode === "area" });
+    state.average20.applyOptions({ visible: averages });
+    state.average50.applyOptions({ visible: averages });
+    state.volume.applyOptions({ visible: showVolume });
+    state.chart.priceScale("right").applyOptions({ scaleMargins: { top: 0.08, bottom: showVolume ? 0.14 : 0.05 } });
+  }, [mode, averages, showVolume, compact, expanded]);
+
+  useEffect(() => {
+    if (!expanded) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const escape = (event: KeyboardEvent) => { if (event.key === "Escape") setExpanded(false); };
+    document.addEventListener("keydown", escape);
+    return () => { document.body.style.overflow = previousOverflow; document.removeEventListener("keydown", escape); };
+  }, [expanded]);
+
+  function reset() {
+    const chart = api.current?.chart;
+    if (!chart) return;
+    chart.priceScale("right").applyOptions({ autoScale: true });
+    chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, candles.length - (compact ? 90 : Math.max(60, Math.floor((container.current?.clientWidth ?? 1000) / 7)))), to: candles.length + 5 });
+  }
+  function changeInterval(value: string) { previous.current = []; setHoverTime(null); setInterval(value); }
+  function zoom(factor: number) {
+    const scale = api.current?.chart.timeScale();
+    const range = scale?.getVisibleLogicalRange();
+    if (scale && range) scale.setVisibleLogicalRange({ from: range.to - Math.max(10, Math.min(candles.length + 10, (range.to - range.from) * factor)), to: range.to });
+  }
+  function downloadData() {
+    const csv = ["time,open,high,low,close,volume", ...candles.map(c => [new Date(c.time * 1000).toISOString(), c.open, c.high, c.low, c.close, c.volume].join(","))].join("\n");
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+    const link = document.createElement("a"); link.href = url; link.download = `derivix-${symbol.replace(/[^a-z0-9]/gi, "-")}-${interval === "0" ? "live-ticks" : `${interval}s`}.csv`; link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+  const content = <div ref={wrapper} className={`trading-chart ${compact ? "trading-chart--compact" : ""} ${expanded ? "trading-chart--expanded" : ""}`}>
+    <div className="chart-toolbar">
+      <AnimatedTabs ariaLabel="Candle interval" tabs={intervals} activeTab={interval} onChange={changeInterval} variant="segment" className="chart-intervals" />
+      {!compact && <div className="flex items-center gap-1">
+        <button type="button" className="chart-tool" aria-pressed={averages} onClick={() => setAverages(!averages)}>MA <span className="text-brand-muted">20 / 50</span></button>
+        <button type="button" className="chart-tool" aria-pressed={showVolume} onClick={() => setShowVolume(!showVolume)}>Volume</button>
+      </div>}
+      <div className="ml-auto flex items-center gap-0.5">
+        <button type="button" className="chart-icon" onClick={() => zoom(1.35)} aria-label="Zoom out" title="Zoom out"><Minus size={15} /></button>
+        <button type="button" className="chart-icon" onClick={() => zoom(.75)} aria-label="Zoom in" title="Zoom in"><Plus size={15} /></button>
+        <button type="button" className="chart-icon" onClick={reset} aria-label="Reset chart view" title="Reset chart view"><RotateCcw size={14} /></button>
+        {!compact && <><button type="button" className="chart-icon" onClick={downloadData} aria-label="Download chart data" title="Export CSV"><Download size={14} /></button><ThemeToggle /><button type="button" className="chart-tool" onClick={() => setExpanded(value => !value)} aria-label={expanded ? "Exit fullscreen chart" : "Open fullscreen chart"} title={expanded ? "Exit fullscreen (Esc)" : "Fullscreen chart"}><Maximize2 size={14} /><span>{expanded ? "Exit" : "Fullscreen"}</span></button></>}
+      </div>
+    </div>
+    <div className="chart-legend" aria-label="Candle price details">
+      <span className="font-semibold text-brand-ink">{symbol} <span className="ml-1 font-normal text-brand-muted">· {intervals.find(i => i.id === interval)?.label}</span></span>
+      {selected && <><span>O <b>{price(selected.open)}</b></span><span>H <b>{price(selected.high)}</b></span><span>L <b>{price(selected.low)}</b></span><span>C <b style={{ color: selected.close >= selected.open ? up : down }}>{price(selected.close)}</b></span>{!compact && <span>Vol <b>{selected.volume.toLocaleString("en-US", { maximumFractionDigits: 0 })}</b></span>}</>}
+      {!selected && <span>Waiting for market data…</span>}
+    </div>
+    {averages && <div className="chart-indicators"><span><i className="bg-[#c4a05c]" /> MA 20</span><span><i className="bg-[#7f8de0]" /> MA 50</span><span className="ml-auto">{selected ? new Date(selected.time * 1000).toISOString().slice(0, interval === "0" ? 19 : 16).replace("T", " ") : ""} UTC</span></div>}
+    <div ref={container} className="chart-canvas" aria-label={`${symbol} interactive ${mode} chart with price and volume`} />
+    {!compact && <div className="chart-status"><span><i /> {interval === "0" ? "Live simulation · 1.5s ticks" : "Simulated market data"}</span><span>Drag to pan · Scroll to zoom</span><button type="button" onClick={reset}>Go to latest <span aria-hidden="true">→</span></button></div>}
+  </div>;
+  return expanded ? createPortal(content, document.body) : content;
 }

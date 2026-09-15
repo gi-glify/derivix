@@ -1,30 +1,30 @@
-const markets = [
-  ["EUR/USD", "1.1724", "+0.42%"],
-  ["GBP/USD", "1.3452", "-0.18%"],
-  ["XAU/USD", "3,492.50", "+0.74%"],
-  ["BTC/USD", "111,240", "+1.21%"],
-];
+import { useMemo } from "react";
+import { ArrowUpRight, ChartCandlestick } from "lucide-react";
+import { InteractiveCandlestickChart } from "@/components/charts/interactive-candlestick";
+import type { PricePoint } from "@/lib/demo/types";
+
+/** Fixed illustrative data, deliberately separate from account prices and balances. */
+function previewHistory(): PricePoint[] {
+  let previous = 1.1642;
+  let seed = 42;
+  const random = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  const start = Date.UTC(2026, 8, 1);
+  return Array.from({ length: 120 }, (_, i) => {
+    const open = previous;
+    const close = open + (random() - .44) * .0014;
+    previous = close;
+    return { time: start + i * 3600000, open, close, price: close, high: Math.max(open, close) + random() * .0006, low: Math.min(open, close) - random() * .0006, volume: 200 + random() * 1800 };
+  });
+}
 
 export function MarketPreview() {
-  return (
-    <div className="overflow-hidden rounded-[28px] border border-[#dfe5dd] bg-white shadow-[0_24px_80px_rgba(17,19,18,0.10)]">
-      <div className="flex items-center justify-between border-b border-[#edf0ec] px-6 py-5">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#858c85]">Market overview</p>
-          <p className="mt-1 text-lg font-semibold">Watch your markets</p>
-        </div>
-        <span className="rounded-full bg-[#eef9d8] px-3 py-1.5 text-xs font-bold text-[#5f8c1c]">Live Market</span>
-      </div>
-      <div className="grid grid-cols-[1.5fr_1fr_1fr] px-6 py-3 text-[10px] font-bold uppercase tracking-[0.16em] text-[#9aa19b]">
-        <span>Market</span><span>Price</span><span className="text-right">24h</span>
-      </div>
-      {markets.map(([name, price, change]) => (
-        <div key={name} className="grid grid-cols-[1.5fr_1fr_1fr] items-center border-t border-[#f0f2ef] px-6 py-4 text-sm">
-          <div className="flex items-center gap-3"><span className="h-2 w-2 rounded-full bg-[#b4e548]" /><span className="font-semibold">{name}</span></div>
-          <span className="font-medium text-[#4d554e]">{price}</span>
-          <span className={`text-right font-bold ${change.startsWith("+") ? "text-[#73a51e]" : "text-[#d46969]"}`}>{change}</span>
-        </div>
-      ))}
-    </div>
-  );
+  const points = useMemo(previewHistory, []);
+  const latest = points.at(-1)!;
+  const change = (latest.close / points[0].open - 1) * 100;
+  return <div className="preview-frame"><div className="preview-inner">
+    <div className="preview-header"><div className="flex items-center gap-2.5"><span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-lime/15 text-brand-limeDeep"><ChartCandlestick size={17} /></span><div><p className="text-xs font-semibold">Market workspace</p><p className="mt-0.5 text-[10px] text-brand-muted">A clearer view of every move</p></div></div><span className="rounded-md border border-brand-line px-2 py-1 text-[9px] uppercase tracking-widest text-brand-muted">Demo preview</span></div>
+    <div className="preview-stats"><div><p>EUR / USD</p><strong>{latest.close.toFixed(5)}</strong></div><div><p>Period change</p><strong className="text-[#25a886]"><ArrowUpRight className="mr-1 inline h-3 w-3" />{change.toFixed(2)}%</strong></div><div className="ml-auto text-right"><p>Instrument</p><strong>Forex</strong></div></div>
+    <div className="px-2 pb-2"><InteractiveCandlestickChart points={points} symbol="EUR/USD" compact /></div>
+    <div className="flex justify-between border-t border-brand-line px-4 py-3 text-[9px] text-brand-muted"><span>Illustrative data · Try the chart controls</span><span>UTC</span></div>
+  </div></div>;
 }
