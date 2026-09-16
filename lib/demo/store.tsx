@@ -39,8 +39,7 @@ type DemoContextValue = {
   markNotificationRead: (id: string) => void;
   balance: number;
   hasDeposit: boolean;
-  beginDeposit: (amount: number, provider: string) => string;
-  confirmDeposit: (id: string) => void;
+  addPracticeCredits: () => void;
   requestWithdrawal: (amount: number, provider: string) => string | null;
   approveWithdrawal: (id: string) => void;
   kyc: KycProfile;
@@ -120,13 +119,8 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
       markets, marketHistory, positions, transactions, notifications, unreadNotifications: notifications.filter((item) => !item.read).length, balance, hasDeposit: hasCompletedDeposit(transactions),
       markAllNotificationsRead() { setNotifications((items) => items.map((item) => ({ ...item, read: true }))); },
       markNotificationRead(id) { setNotifications((items) => items.map((item) => item.id === id ? { ...item, read: true } : item)); },
-      beginDeposit(amount, provider) {
-        const id = crypto.randomUUID();
-        setTransactions((current) => [{ id, type: "DEPOSIT", amount, status: "PENDING", provider, description: `${provider} deposit`, createdAt: new Date().toISOString() }, ...current]);
-        return id;
-      },
-      confirmDeposit(id) {
-        setTransactions((current) => current.map((item) => item.id === id ? { ...item, status: "COMPLETED" } : item));
+      addPracticeCredits() {
+        setTransactions(current => hasCompletedDeposit(current) ? current : [{ id: crypto.randomUUID(), type: "DEPOSIT", amount: 10000, status: "COMPLETED", provider: "Practice credits", description: "Free virtual credits — no cash value", createdAt: new Date().toISOString() }, ...current]);
       },
       requestWithdrawal(amount, provider) {
         const error = validateWithdrawal(amount, balance);
@@ -141,7 +135,7 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
       openPosition(symbol, side, quantity) {
         const market = markets.find((item) => item.symbol === symbol);
         if (!market) return "Market not found.";
-        if (!hasCompletedDeposit(transactions)) return "Deposit funds to activate trading.";
+        if (!hasCompletedDeposit(transactions)) return "Add free practice credits to start simulated trading.";
         const error = validateOrder(quantity, balance, market.price);
         if (error) return error;
         const id = crypto.randomUUID();

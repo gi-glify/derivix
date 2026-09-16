@@ -1,0 +1,7 @@
+# User session JWTs are validated with auth.getUser inside the function.
+[functions.mpesa-deposit]
+verify_jwt = false
+
+# Public callback: status is trusted only after authenticated provider lookup.
+[functions.palpluss-webhook]
+verify_jwt = false

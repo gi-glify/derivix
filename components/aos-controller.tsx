@@ -1,25 +1,38 @@
-import { useEffect } from "react";
-import { useLocation } from "react-router-dom";
-import AOS from "aos";
+import { useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
+import AOS from 'aos';
 
+let initialized = false;
+const selector = 'main > section, main > div:not(.reference-terminal), main article, .auth-story, .auth-content, .access-card, .page-heading, .metric, .overview-grid > .panel';
 export function AOSController() {
   const { pathname } = useLocation();
   useEffect(() => {
-    const preference = window.matchMedia("(prefers-reduced-motion: reduce)");
-    // Restore section reveals without transforming fixed navigation or the live canvas.
-    const sections = document.querySelectorAll<HTMLElement>("main > section, main > div > section, main article, .auth-story, .auth-content");
-    sections.forEach((element, index) => {
-      if (element.hasAttribute("data-aos") || element.closest(".reference-terminal, .trading-chart")) return;
-      element.dataset.aos = "fade-up";
-      element.dataset.aosDelay = String((index % 3) * 70);
-    });
-    const initialize = () => {
-      AOS.init({ duration: 650, easing: "ease-out-cubic", once: false, mirror: true, offset: 24, disable: preference.matches });
-      AOS.refreshHard();
+    let frame = 0;
+    const refresh = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        document.querySelectorAll<HTMLElement>(selector).forEach((element) => {
+          if (element.hasAttribute('data-aos') || element.closest('dialog, aside, .trading-chart, .reference-terminal, [data-aos]')) return;
+          element.dataset.aos = 'fade-up';
+        });
+        if (!initialized) {
+          AOS.init({ duration: 550, easing: 'ease-out-cubic', once: true, mirror: false, offset: 20, disableMutationObserver: true });
+          initialized = true;
+        }
+        AOS.refreshHard();
+      });
     };
-    const frame = requestAnimationFrame(initialize);
-    preference.addEventListener("change", initialize);
-    return () => { cancelAnimationFrame(frame); preference.removeEventListener("change", initialize); };
+    refresh();
+    // Only refresh for mounted sections, not live price text, clocks or table cell updates.
+    const observer = new MutationObserver((records) => {
+      if (records.some(record => [...record.addedNodes].some(node => node instanceof HTMLElement && (node.matches(selector + ', [data-aos]') || node.querySelector(selector + ', [data-aos]'))))) refresh();
+    });
+    observer.observe(document.getElementById('root')!, { childList: true, subtree: true });
+    const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
+    preference.addEventListener('change', refresh);
+    document.fonts?.ready.then(() => { if (!disposed) refresh(); });
+    let disposed = false;
+    return () => { disposed = true; observer.disconnect(); cancelAnimationFrame(frame); preference.removeEventListener('change', refresh); };
   }, [pathname]);
   return null;
 }

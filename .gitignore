@@ -34,4 +34,4 @@ docs/
 *.md
 
 # Independent operations app: managed by its own Git repository.
-/derivix-admin/
+/derivix-admin

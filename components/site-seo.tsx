@@ -17,7 +17,7 @@ const pages: Record<string, { title: string; description: string }> = {
   "/app/markets/wins": { title: "Preset win practice | Derivix", description: "An explicitly scripted scenario using virtual credits only." },
   "/app/market-explorer": { title: "Market explorer | Derivix", description: "Explore simulated market charts." },
   "/app/trade": { title: "Trade | Derivix", description: "Review market price action and manage orders from the Derivix trading screen." },
-  "/app/deposit": { title: "Add funds | Derivix", description: "Add funds to your Derivix wallet through the configured payment provider." },
+  "/app/deposit": { title: "M-Pesa payments | Derivix", description: "Track account-linked M-Pesa payment requests and provider-confirmed receipts." },
   "/app/withdraw": { title: "Withdraw funds | Derivix", description: "Request a wallet withdrawal and review its account status." },
   "/app/positions": { title: "Positions | Derivix", description: "Review and manage open and closed trading positions." },
   "/app/transactions": { title: "Transactions | Derivix", description: "Review your deposits, withdrawals, and trading ledger activity." },
