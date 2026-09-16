@@ -14,6 +14,8 @@ const pages: Record<string, { title: string; description: string }> = {
   "/auth/verified": { title: "Account ready | Derivix", description: "Continue to your Derivix workspace." },
   "/app": { title: "Portfolio dashboard | Derivix", description: "Review portfolio balance, positions, market activity, and account transactions." },
   "/app/markets": { title: "Markets | Derivix", description: "Inspect interactive market charts, price action, volume, and order details." },
+  "/app/markets/wins": { title: "Preset win practice | Derivix", description: "An explicitly scripted scenario using virtual credits only." },
+  "/app/market-explorer": { title: "Market explorer | Derivix", description: "Explore simulated market charts." },
   "/app/trade": { title: "Trade | Derivix", description: "Review market price action and manage orders from the Derivix trading screen." },
   "/app/deposit": { title: "Add funds | Derivix", description: "Add funds to your Derivix wallet through the configured payment provider." },
   "/app/withdraw": { title: "Withdraw funds | Derivix", description: "Request a wallet withdrawal and review its account status." },

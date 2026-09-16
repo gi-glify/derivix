@@ -1,5 +1,4 @@
--- ENABLE EXTENSIONS
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+-- UUID defaults use PostgreSQL's built-in gen_random_uuid(); no extension required.
 
 -- 1. PROFILES TABLE
 -- Extends Supabase auth.users
@@ -16,7 +15,7 @@ CREATE TABLE IF NOT EXISTS profiles (
 
 -- 2. WALLETS TABLE
 CREATE TABLE IF NOT EXISTS wallets (
-  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid UNIQUE NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   balance decimal(20,8) DEFAULT 0.0 CHECK (balance >= 0),
   currency text DEFAULT 'KES',
@@ -25,7 +24,7 @@ CREATE TABLE IF NOT EXISTS wallets (
 
 -- 3. POSITIONS TABLE
 CREATE TABLE IF NOT EXISTS positions (
-  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   symbol text NOT NULL,
   side text NOT NULL CHECK (side IN ('BUY', 'SELL')),
@@ -42,7 +41,7 @@ CREATE TABLE IF NOT EXISTS positions (
 
 -- 4. TRANSACTIONS TABLE
 CREATE TABLE IF NOT EXISTS transactions (
-  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   wallet_id uuid NOT NULL REFERENCES wallets(id) ON DELETE CASCADE,
   type text NOT NULL CHECK (type IN ('DEPOSIT', 'WITHDRAWAL', 'TRADE_PROFIT', 'TRADE_LOSS')),

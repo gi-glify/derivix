@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS public.user_progress (
 );
 
 CREATE TABLE IF NOT EXISTS public.user_events (
-  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   event_type text NOT NULL,
   metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
@@ -25,7 +25,7 @@ CREATE INDEX IF NOT EXISTS user_events_user_created_at_idx ON public.user_events
 CREATE INDEX IF NOT EXISTS user_events_type_created_at_idx ON public.user_events (event_type, created_at DESC);
 
 CREATE TABLE IF NOT EXISTS public.payment_attempts (
-  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   provider text NOT NULL DEFAULT 'palpluss',
   direction text NOT NULL CHECK (direction IN ('TOP_UP', 'WITHDRAWAL')),

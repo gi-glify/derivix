@@ -74,7 +74,12 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
       const now = Date.now();
       const ticks = nextMarkets.map((market, index) => {
         const previous = currentMarkets[index].price;
-        return { symbol: market.symbol, point: { time: now, price: market.price, open: previous, high: Math.max(previous, market.price), low: Math.min(previous, market.price), close: market.price, volume: 100 + Math.random() * 900 } satisfies PricePoint };
+        // Model excursions within the simulated tick, beyond its opening and closing prices.
+        // Keep the closing quote unchanged so order prices and P&L stay consistent.
+        const excursion = Math.max(Math.abs(market.price - previous), Math.abs(previous) * (market.volatility ?? 0.00035) * 0.5);
+        const high = Math.max(previous, market.price) + excursion * (0.25 + Math.random() * 0.75);
+        const low = Math.max(Number.EPSILON, Math.min(previous, market.price) - excursion * (0.25 + Math.random() * 0.75));
+        return { symbol: market.symbol, point: { time: now, price: market.price, open: previous, high, low, close: market.price, volume: 100 + Math.random() * 900 } satisfies PricePoint };
       });
       marketsRef.current = nextMarkets;
       setMarkets(nextMarkets);

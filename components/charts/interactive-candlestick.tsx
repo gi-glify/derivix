@@ -25,7 +25,7 @@ type ChartState = {
   average50: ISeriesApi<"Line">;
 };
 
-export function InteractiveCandlestickChart({ points, symbol = "Market", mode = "candles", compact = false }: { points: PricePoint[]; symbol?: string; mode?: ChartMode; compact?: boolean }) {
+export function InteractiveCandlestickChart({ points, symbol = "Market", mode = "candles", compact = false, disclosure }: { points: PricePoint[]; symbol?: string; mode?: ChartMode; compact?: boolean; disclosure?: string }) {
   const { theme } = useTheme();
   const [interval, setInterval] = useState(compact ? "3600" : "0");
   const [averages, setAverages] = useState(false);
@@ -49,7 +49,7 @@ export function InteractiveCandlestickChart({ points, symbol = "Market", mode = 
       timeScale: { borderVisible: false, timeVisible: true, secondsVisible: false, rightOffset: 6, barSpacing: 6, fixLeftEdge: true },
       handleScroll: { vertTouchDrag: false },
     });
-    const candleSeries = chart.addSeries(CandlestickSeries, { upColor: up, downColor: down, borderVisible: false, wickUpColor: up, wickDownColor: down });
+    const candleSeries = chart.addSeries(CandlestickSeries, { upColor: up, downColor: down, borderVisible: false, wickVisible: true, wickUpColor: up, wickDownColor: down });
     const line = chart.addSeries(LineSeries, { color: up, lineWidth: 1 });
     const area = chart.addSeries(AreaSeries, { lineColor: up, topColor: "rgba(37,168,134,.22)", bottomColor: "rgba(37,168,134,0)", lineWidth: 1 });
     const average20 = chart.addSeries(LineSeries, { color: "#c4a05c", lineWidth: 1, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
@@ -146,6 +146,7 @@ export function InteractiveCandlestickChart({ points, symbol = "Market", mode = 
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
   const content = <div ref={wrapper} className={`trading-chart ${compact ? "trading-chart--compact" : ""} ${expanded ? "trading-chart--expanded" : ""}`}>
+    {disclosure && <div className="border-b border-amber-400/30 bg-amber-400/10 px-3 py-2 text-xs font-semibold text-amber-600">{disclosure}</div>}
     <div className="chart-toolbar">
       <AnimatedTabs ariaLabel="Candle interval" tabs={intervals} activeTab={interval} onChange={changeInterval} variant="segment" className="chart-intervals" />
       {!compact && <div className="flex items-center gap-1">

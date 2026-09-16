@@ -5,7 +5,8 @@ import { Logo } from "@/components/brand/logo";
 
 const navigation = [
   { label: "Overview", href: "/app", icon: LayoutDashboard },
-  { label: "Markets", href: "/app/markets", icon: BarChart3 },
+  { label: "Practice markets", href: "/app/markets", icon: BarChart3 },
+  { label: "Market explorer", href: "/app/market-explorer", icon: ChartCandlestick },
   { label: "Trade", href: "/app/trade", icon: ChartCandlestick },
   { label: "Positions", href: "/app/positions", icon: BriefcaseBusiness },
   { label: "Wallet", href: "/app/deposit", icon: Wallet },

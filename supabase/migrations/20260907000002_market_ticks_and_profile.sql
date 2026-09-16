@@ -2,7 +2,7 @@
 -- Run after the initial schema migration.
 
 CREATE TABLE IF NOT EXISTS public.market_ticks (
-  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   symbol text NOT NULL,
   open numeric(20,8) NOT NULL,
   high numeric(20,8) NOT NULL,

@@ -32,3 +32,6 @@ tsconfig.tsbuildinfo
 # Private project documentation and reference material
 docs/
 *.md
+
+# Independent operations app: managed by its own Git repository.
+/derivix-admin/
