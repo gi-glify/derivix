@@ -3,8 +3,8 @@ import { Link } from "react-router-dom";
 import { FlaskConical, LockKeyhole, RefreshCw } from "lucide-react";
 import { InteractiveCandlestickChart } from "@/components/charts/interactive-candlestick";
 import { seedMarketHistory } from "@/lib/demo/history";
-import { practiceChartPoints } from "@/lib/demo/chart";
-import { practiceRequest, type PracticeState } from "@/lib/demo/api";
+import { practiceChartPoints } from "@/lib/practice/chart";
+import { practiceRequest, type PracticeState } from "@/lib/practice/api";
 
 const credit = (amount: number) => Number(amount).toLocaleString(undefined, { maximumFractionDigits: 2 });
 export default function liveMarketPage() {

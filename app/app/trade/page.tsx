@@ -8,7 +8,7 @@ import { InteractiveCandlestickChart } from "@/components/charts/interactive-can
 import { useDemo } from "@/lib/demo/store";
 
 export default function TradePage() {
-  const { markets, marketHistory, balance, hasDeposit, addliveCredits, openPosition } = useDemo();
+  const { markets, marketHistory, balance, hasDeposit, addPracticeCredits: addliveCredits, openPosition } = useDemo();
   const [symbol, setSymbol] = useState(markets[0].symbol);
   const [side, setSide] = useState<"BUY" | "SELL">("BUY");
   const [quantity, setQuantity] = useState("0.10");
