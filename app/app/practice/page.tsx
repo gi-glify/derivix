@@ -22,7 +22,7 @@ export default function liveMarketPage() {
   const activeSymbol = active?.symbol ?? symbol;
   const mode = snapshot?.mode ?? null;
   const winning = mode === "win";
-  const disclosure = snapshot ? `PRESET ${winning ? "WIN" : "LOSS"} live · ` : "SIMULATION · ";
+  const disclosure = snapshot ? `PRESET ${winning ? "WIN" : "LOSS"} live · ` : "simulation · ";
   const [idleStart] = useState(Date.now);
   const [seed] = useState(() => Math.floor(Math.random() * 4294967296));
   const load = useCallback(async (action: "state" | "open" | "settle" | "reset" = "state", payload: Record<string, unknown> = {}) => {
