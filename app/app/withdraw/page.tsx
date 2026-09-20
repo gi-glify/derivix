@@ -3,10 +3,10 @@
 import { Link } from "@/components/router-link";
 import { ArrowLeft, CheckCircle2, Smartphone } from "lucide-react";
 import { useState } from "react";
-import { uselive } from "@/lib/live/store";
+import { useDemo } from "@/lib/demo/store";
 
 export default function WithdrawPage() {
-  const { balance, requestWithdrawal } = uselive();
+  const { balance, requestWithdrawal } = useDemo();
   const [amount, setAmount] = useState("1000");
   const [phone, setPhone] = useState("0712 000 000");
   const [message, setMessage] = useState("");

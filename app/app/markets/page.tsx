@@ -4,14 +4,14 @@ import { useEffect, useMemo, useState } from "react";
 import { Activity, ArrowDownRight, ArrowLeft, ArrowUpRight, Bell, CandlestickChart, CheckCircle2, ChevronDown, Clock3, Crosshair, Layers3, Maximize2, Radio, ShieldCheck, SlidersHorizontal, WalletCards, X } from "lucide-react";
 import { Link } from "@/components/router-link";
 import { InteractiveCandlestickChart } from "@/components/charts/interactive-candlestick";
-import { uselive } from "@/lib/live/store";
+import { useDemo } from "@/lib/demo/store";
 import { useLocation } from "react-router-dom";
 
 function money(value: number, digits = 2) { return value.toLocaleString(undefined, { minimumFractionDigits: digits, maximumFractionDigits: digits }); }
 
 export default function MarketsPage() {
   const { pathname } = useLocation();
-  const { markets, marketHistory, positions, transactions, balance, hasDeposit, openPosition } = uselive();
+  const { markets, marketHistory, positions, transactions, balance, hasDeposit, openPosition } = useDemo();
   const [symbol, setSymbol] = useState(markets[0]?.symbol ?? "EUR/USD");
   const [side, setSide] = useState<"BUY" | "SELL">("BUY");
   const [quantity, setQuantity] = useState("0.10");

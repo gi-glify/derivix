@@ -5,10 +5,10 @@ import { AlertTriangle, ArrowLeft, CandlestickChart } from "lucide-react";
 import { Link } from "@/components/router-link";
 import AnimatedTabs from "@/components/smoothui/animated-tabs";
 import { InteractiveCandlestickChart } from "@/components/charts/interactive-candlestick";
-import { uselive } from "@/lib/live/store";
+import { useDemo } from "@/lib/demo/store";
 
 export default function TradePage() {
-  const { markets, marketHistory, balance, hasDeposit, addliveCredits, openPosition } = uselive();
+  const { markets, marketHistory, balance, hasDeposit, addliveCredits, openPosition } = useDemo();
   const [symbol, setSymbol] = useState(markets[0].symbol);
   const [side, setSide] = useState<"BUY" | "SELL">("BUY");
   const [quantity, setQuantity] = useState("0.10");

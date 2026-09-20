@@ -5,11 +5,11 @@ import { Link } from "@/components/router-link";
 import { StatCard } from "@/components/app/stat-card";
 import { LiveLineChart } from "@/components/charts/live-charts";
 import { MarketTicker } from "@/components/markets/market-ticker";
-import { uselive } from "@/lib/live/store";
-import { portfolioHistory } from "@/lib/live/portfolio";
+import { useDemo } from "@/lib/demo/store";
+import { portfolioHistory } from "@/lib/demo/portfolio";
 
 export default function DashboardPage() {
-  const { markets, marketHistory, positions, transactions, balance } = uselive();
+  const { markets, marketHistory, positions, transactions, balance } = useDemo();
   const openPositions = positions.filter((position) => position.status === "OPEN");
   const unrealized = openPositions.reduce((sum, position) => sum + position.unrealizedPnl, 0);
   const totalBalance = balance + unrealized;

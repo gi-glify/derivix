@@ -2,13 +2,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { FlaskConical, LockKeyhole, RefreshCw } from "lucide-react";
 import { InteractiveCandlestickChart } from "@/components/charts/interactive-candlestick";
-import { seedMarketHistory } from "@/lib/live/history";
-import { liveChartPoints } from "@/lib/live/chart";
-import { liveRequest, type liveState } from "@/lib/live/api";
+import { seedMarketHistory } from "@/lib/demo/history";
+import { practiceChartPoints } from "@/lib/demo/chart";
+import { practiceRequest, type PracticeState } from "@/lib/demo/api";
 
 const credit = (amount: number) => Number(amount).toLocaleString(undefined, { maximumFractionDigits: 2 });
 export default function liveMarketPage() {
-  const [snapshot, setSnapshot] = useState<liveState | null>(null);
+  const [snapshot, setSnapshot] = useState<PracticeState | null>(null);
   const [symbol, setSymbol] = useState("EUR/USD");
   const [side, setSide] = useState<"BUY" | "SELL">("BUY");
   const [stake, setStake] = useState("100");
@@ -17,7 +17,7 @@ export default function liveMarketPage() {
   const [now, setNow] = useState(Date.now());
   const clockOffset = useRef(0);
   const requestId = useRef(0);
-  const modeRef = useRef<liveState["mode"] | null>(null);
+  const modeRef = useRef<PracticeState["mode"] | null>(null);
   const active = snapshot?.orders.find(order => order.status === "OPEN");
   const activeSymbol = active?.symbol ?? symbol;
   const mode = snapshot?.mode ?? null;
@@ -29,7 +29,7 @@ export default function liveMarketPage() {
     const id = ++requestId.current;
     setBusy(true); setError("");
     try {
-      const result = await liveRequest(action, action === "state" ? null : modeRef.current, payload);
+      const result = await practiceRequest(action, action === "state" ? null : modeRef.current, payload);
       if (id !== requestId.current) return;
       modeRef.current = result.mode;
       clockOffset.current = Date.parse(result.serverTime) - Date.now();
@@ -53,7 +53,7 @@ export default function liveMarketPage() {
     const start = recent ? Date.parse(recent.opened_at) - 1000 : idleStart;
     return seedMarketHistory({ symbol: activeSymbol, price: base, previousPrice: base }, start, seed).slice(-140);
   }, [recent?.id, recent?.entry_price, recent?.opened_at, activeSymbol, idleStart, seed]);
-  const points = useMemo(() => liveChartPoints(history, recent, now, seed), [history, recent, now, seed]);
+  const points = useMemo(() => practiceChartPoints(history, recent, now, seed), [history, recent, now, seed]);
   return <main className="mx-auto max-w-[1600px] px-4 py-6 sm:px-7">
     <div className="mb-5 flex flex-wrap items-center justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-widest text-brand-muted">live scenarios</p><h1 className="mt-1 text-2xl font-semibold">{snapshot ? (winning ? "Always-win" : "Always-lose") : "Assigned"} live market</h1></div><div className="flex gap-4 text-xs font-semibold"><Link to="/app/market-explorer">Market explorer</Link></div></div>
     <div className="mb-5 flex gap-3 rounded-xl border border-amber-400/30 bg-amber-400/10 p-4"><FlaskConical size={21} className="shrink-0 text-amber-600" /><div><p className="text-sm font-bold">{disclosure}</p><p className="mt-1 text-xs leading-5 text-brand-muted">Your administrator assigns the live scenario. {snapshot && <>Every BUY or SELL is scripted to {winning ? "gain" : "lose"} 10% of its virtual stake after 12 seconds. </>} This is a livenstration, not a prediction. Credits cannot be deposited, withdrawn, or transferred to a wallet.</p></div></div>
