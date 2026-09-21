@@ -11,7 +11,7 @@ export default function liveMarketPage() {
   const [snapshot, setSnapshot] = useState<PracticeState | null>(null);
   const [symbol, setSymbol] = useState("EUR/USD");
   const [side, setSide] = useState<"BUY" | "SELL">("BUY");
-  const [stake, setStake] = useState("100");
+  const [stake, setStake] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [now, setNow] = useState(Date.now());

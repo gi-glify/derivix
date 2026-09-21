@@ -11,7 +11,7 @@ export default function TradePage() {
   const { markets, marketHistory, balance, hasDeposit, addPracticeCredits: addPracticeCredits, openPosition } = useDemo();
   const [symbol, setSymbol] = useState(markets[0].symbol);
   const [side, setSide] = useState<"BUY" | "SELL">("BUY");
-  const [quantity, setQuantity] = useState("0.10");
+  const [quantity, setQuantity] = useState("");
   const [mode, setMode] = useState<"line" | "candles" | "area">("candles");
   const [message, setMessage] = useState("");
   const market = markets.find((item) => item.symbol === symbol) ?? markets[0];

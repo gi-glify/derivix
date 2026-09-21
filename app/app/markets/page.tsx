@@ -14,7 +14,7 @@ export default function MarketsPage() {
   const { markets, marketHistory, positions, transactions, balance, hasDeposit, openPosition } = useDemo();
   const [symbol, setSymbol] = useState(markets[0]?.symbol ?? "EUR/USD");
   const [side, setSide] = useState<"BUY" | "SELL">("BUY");
-  const [quantity, setQuantity] = useState("0.10");
+  const [quantity, setQuantity] = useState("");
   const [toast, setToast] = useState<string | null>(null);
   const market = markets.find((item) => item.symbol === symbol) ?? markets[0];
   const points = marketHistory[symbol] ?? [];

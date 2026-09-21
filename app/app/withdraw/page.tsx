@@ -7,8 +7,8 @@ import { useDemo } from "@/lib/demo/store";
 
 export default function WithdrawPage() {
   const { balance, requestWithdrawal } = useDemo();
-  const [amount, setAmount] = useState("1000");
-  const [phone, setPhone] = useState("0712 000 000");
+  const [amount, setAmount] = useState("");
+  const [phone, setPhone] = useState("");
   const [message, setMessage] = useState("");
   const [submitted, setSubmitted] = useState(false);
   function submit() {

@@ -11,7 +11,7 @@ export function Topbar() {
   const navigate = useNavigate();
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  const fullName = user?.user_metadata?.full_name || "Demo user";
+  const fullName = user?.user_metadata?.full_name || "Account";
   const initials = fullName.split(" ").map((name: string) => name[0]).join("").slice(0, 2) || "AS";
 
   return (

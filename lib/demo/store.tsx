@@ -15,18 +15,6 @@ const initialMarkets: Market[] = [
   { symbol: "XAU/USD", price: 3492.5, previousPrice: 3466.8 },
 ];
 
-const MARKET_SNAPSHOT_KEY = "derivix-market-snapshot-v1";
-type MarketSnapshot = { version?: number; markets: Market[]; marketHistory: Record<string, PricePoint[]> };
-function readMarketSnapshot(): MarketSnapshot | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const parsed = JSON.parse(window.localStorage.getItem(MARKET_SNAPSHOT_KEY) ?? "null") as MarketSnapshot | null;
-    if (!parsed?.markets?.length || !parsed.marketHistory) return null;
-    if (parsed.version === 2 && parsed.markets.every(market => (parsed.marketHistory[market.symbol]?.length ?? 0) >= HISTORY_POINTS)) return parsed;
-    // Replace only old illustrative history; keep current quotes and account state intact.
-    return { version: 2, markets: parsed.markets, marketHistory: Object.fromEntries(parsed.markets.map(market => [market.symbol, seedMarketHistory(market, Date.now(), Math.floor(Math.random() * 4294967296))])) };
-  } catch { return null; }
-}
 
 type DemoContextValue = {
   markets: Market[];
@@ -52,7 +40,7 @@ type DemoContextValue = {
 const DemoContext = createContext<DemoContextValue | null>(null);
 
 export function DemoProvider({ children }: { children: React.ReactNode }) {
-  const [initialSnapshot] = useState(() => readMarketSnapshot() ?? { version: 2, markets: initialMarkets, marketHistory: Object.fromEntries(initialMarkets.map(market => [market.symbol, seedMarketHistory(market, Date.now(), Math.floor(Math.random() * 4294967296))])) });
+  const [initialSnapshot] = useState(() => ({ markets: initialMarkets, marketHistory: Object.fromEntries(initialMarkets.map(market => [market.symbol, seedMarketHistory(market, Date.now(), Math.floor(Math.random() * 4294967296))])) }));
   const [markets, setMarkets] = useState<Market[]>(initialSnapshot.markets);
   const [marketHistory, setMarketHistory] = useState<Record<string, PricePoint[]>>(initialSnapshot.marketHistory);
   const marketsRef = useRef(markets);
@@ -63,8 +51,9 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
   const [kyc, setKyc] = useState<KycProfile>({ status: "NOT_STARTED", fullName: "", country: "", documentType: "National ID", documentNumber: "" });
 
   useEffect(() => {
-    try { window.localStorage.setItem(MARKET_SNAPSHOT_KEY, JSON.stringify({ version: 2, markets, marketHistory } satisfies MarketSnapshot)); } catch { /* storage may be unavailable in private browsing */ }
-  }, [markets, marketHistory]);
+    // Remove the retired browser snapshot so fabricated history cannot survive this release.
+    try { window.localStorage.removeItem("derivix-market-snapshot-v1"); } catch { /* storage may be unavailable */ }
+  }, []);
 
   useEffect(() => {
     const timer = window.setInterval(() => {

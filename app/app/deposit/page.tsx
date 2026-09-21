@@ -4,12 +4,13 @@ import { ArrowLeft, CheckCircle2, Clock3, Copy, RefreshCw, ShieldCheck, Smartpho
 import { Link } from '@/components/router-link';
 import { MpesaMark } from '@/components/brand/payment-icons';
 import { useAuth } from '@/lib/auth/store';
+import { supabase } from '@/lib/supabase';
 import { paymentRequest } from '@/lib/payments/api';
 import { normalizePhone, paymentLabel, pendingPayment, validateAmount, type Payment } from '@/lib/payments/payment';
 
 export default function DepositPage() {
   const { user } = useAuth();
-  const [amount,setAmount] = useState('1000');
+  const [amount,setAmount] = useState('');
   const [phone,setPhone] = useState('');
   const [consent,setConsent] = useState(false);
   const [payments,setPayments] = useState<Payment[]>([]);
@@ -42,6 +43,14 @@ export default function DepositPage() {
     finally { if(mounted.current)setLoading(false); }
   },[user?.id]);
   useEffect(()=>{mounted.current=true;void load();return()=>{mounted.current=false;};},[load,user?.id]);
+  useEffect(()=>{
+    if (!supabase || !user?.id || phone) return;
+    let active = true;
+    void supabase.from('profiles').select('phone').eq('id',user.id).maybeSingle().then(({data})=>{
+      if (active && data?.phone) setPhone(String(data.phone));
+    });
+    return ()=>{active=false;};
+  },[user?.id,phone]);
   useEffect(()=>{const timer=setInterval(()=>setNow(Date.now()),1000);return()=>clearInterval(timer);},[]);
   const refresh = useCallback(async (id: string) => {
     if(checking.current)return;checking.current=true;
