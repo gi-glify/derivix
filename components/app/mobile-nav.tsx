@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Link } from "@/components/router-link";
 
 const items = [{ label: "Home", href: "/app", icon: LayoutDashboard }, { label: "Markets", href: "/app/markets", icon: BarChart3 }, { label: "Positions", href: "/app/positions", icon: BriefcaseBusiness }, { label: "Wallet", href: "/app/deposit", icon: Wallet }];
-const moreItems = [{ label: "Trade", href: "/app/trade", icon: BarChart3 }, { label: "Transactions", href: "/app/transactions", icon: FileText }, { label: "Verification", href: "/app/kyc", icon: ShieldCheck }, { label: "Profile", href: "/app/profile", icon: UserRound }, { label: "Settings", href: "/app/profile", icon: Settings2 }];
+const moreItems = [{ label: "Binary Demo", href: "/app/binary", icon: BarChart3 }, { label: "Trade", href: "/app/trade", icon: BarChart3 }, { label: "Transactions", href: "/app/transactions", icon: FileText }, { label: "Verification", href: "/app/kyc", icon: ShieldCheck }, { label: "Profile", href: "/app/profile", icon: UserRound }, { label: "Settings", href: "/app/profile", icon: Settings2 }];
 
 export function MobileNav() {
   const [open, setOpen] = useState(false);

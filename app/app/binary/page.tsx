@@ -1,58 +1,178 @@
 "use client";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
+import { ArrowLeft, ChevronDown, Grid2X2, RefreshCw, Activity, Wallet } from 'lucide-react';
+import { Link } from '@/components/router-link';
+import { useAuth } from '@/lib/auth/store';
+import { binaryRequest, loadBinarySnapshot } from '@/lib/binary/api';
+import { digitFrequencies, displayQuote } from '@/lib/binary/snapshot';
+import type { BinaryContractType } from '@/lib/binary/rules';
+import type { BinaryState } from '@/lib/binary/types';
+import './binary.css';
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowLeft, CheckCircle2, Clock3, FlaskConical, RefreshCw } from "lucide-react";
-import { Link } from "@/components/router-link";
-import { accountRequest } from "@/lib/account/api";
-import type { AccountSummary } from "@/lib/account/types";
-import { binaryRequest } from "@/lib/binary/api";
-import { evaluateDigitContract, type BinaryContractType } from "@/lib/binary/rules";
-import type { BinaryContract, BinaryIndex, BinaryState } from "@/lib/binary/types";
-
-const types: BinaryContractType[] = ["EVEN", "ODD", "OVER", "UNDER", "MATCHES", "DIFFERS"];
-const durations = [1, 5, 10, 20];
-const emptyAccount: AccountSummary = { total: 0, reserved: 0, available: 0, currency: "KES", mode: "demo" };
+const families = [
+  { label: 'Even / Odd', types: ['EVEN', 'ODD'], names: ['Even', 'Odd'] },
+  { label: 'Over / Under', types: ['OVER', 'UNDER'], names: ['Over', 'Under'] },
+  { label: 'Matches / Differs', types: ['MATCHES', 'DIFFERS'], names: ['Matches', 'Differs'] },
+] as const;
 
 export default function BinaryPage() {
-  const [state, setState] = useState<BinaryState | null>(null);
-  const [account, setAccount] = useState<AccountSummary>(emptyAccount);
-  const [symbol, setSymbol] = useState("V50_1S");
-  const [contractType, setContractType] = useState<BinaryContractType>("EVEN");
-  const [prediction, setPrediction] = useState(4);
-  const [stake, setStake] = useState("");
-  const [duration, setDuration] = useState(5);
-  const [busy, setBusy] = useState(true);
-  const [message, setMessage] = useState("");
-  const [now, setNow] = useState(Date.now());
-  const active = state?.contracts.find(contract => contract.status === "OPEN");
-  const index = state?.indices.find(item => item.symbol === (active?.symbol ?? symbol));
-  const digits = useMemo(() => state?.ticks[symbol]?.slice(-10).map(tick => tick.digit) ?? [], [state, symbol]);
+  const { user } = useAuth();
+  return <BinaryWorkspace key={user?.id ?? 'signed-out'} />;
+}
 
-  const load = useCallback(async () => {
-    setBusy(true); setMessage("");
-    try {
-      const [nextState, summary] = await Promise.all([
-        binaryRequest<BinaryState>("state"),
-        accountRequest<{ summary: AccountSummary }>("summary"),
-      ]);
-      setState(nextState); setAccount(summary.summary);
-    } catch (error) { setMessage(error instanceof Error ? error.message : "Unable to load Binary Demo."); }
-    finally { setBusy(false); }
+function BinaryWorkspace() {
+  const [state, setState] = useState<BinaryState | null>(null);
+  const [symbol, setSymbol] = useState('');
+  const [family, setFamily] = useState(0);
+  const [prediction, setPrediction] = useState(4);
+  const [stake, setStake] = useState('');
+  const [duration, setDuration] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [working, setWorking] = useState(false);
+  const [error, setError] = useState('');
+  const [actionError, setActionError] = useState('');
+  const [now, setNow] = useState(Date.now());
+  const mounted = useRef(false);
+  const reading = useRef<Promise<boolean> | null>(null);
+  const mutation = useRef(false);
+  const settling = useRef(false);
+  const latestState = useRef<BinaryState | null>(null);
+  const pending = useRef<Record<string, unknown> | null>(null);
+  const [uncertain, setUncertain] = useState(false);
+
+  const refresh = useCallback((): Promise<boolean> => {
+    if (reading.current) return reading.current;
+    reading.current = (async () => {
+      try {
+        const snapshot = await loadBinarySnapshot();
+        if (mounted.current) {
+          latestState.current = snapshot;
+          setState(snapshot);
+          setSymbol(current => snapshot.indices.some(index => index.symbol === current) ? current : snapshot.indices[0]?.symbol ?? '');
+          setError('');
+        }
+        return true;
+      } catch (failure) {
+        if (mounted.current) setError(failure instanceof Error ? failure.message : 'Unable to load Binary Demo.');
+        return false;
+      } finally { reading.current = null; if (mounted.current) setLoading(false); }
+    })();
+    return reading.current;
   }, []);
-  useEffect(() => { void load(); const timer = window.setInterval(() => { setNow(Date.now()); void load(); }, 5000); return () => window.clearInterval(timer); }, [load]);
+
+  useEffect(() => {
+    mounted.current = true;
+    void refresh();
+    const clock = window.setInterval(() => setNow(Date.now()), 250);
+    const pulse = async () => {
+      if (document.visibilityState !== 'visible' || mutation.current) return;
+      try {
+        await binaryRequest('tick');
+        await refresh();
+        const open = latestState.current?.contracts.find(contract => contract.status === 'OPEN');
+        if (open && Date.parse(open.settles_at) <= Date.now() && !settling.current) {
+          settling.current = true;
+          try { await binaryRequest('settle', { id: open.id }); } finally { settling.current = false; await refresh(); }
+        }
+      } catch (failure) { if (mounted.current) setError(failure instanceof Error ? failure.message : 'Unable to update the simulated market.'); }
+    };
+    const poll = window.setInterval(() => void pulse(), 1000);
+    void pulse();
+    const resume = () => { if (document.visibilityState === 'visible') void refresh(); };
+    document.addEventListener('visibilitychange', resume);
+    return () => { mounted.current = false; clearInterval(clock); clearInterval(poll); document.removeEventListener('visibilitychange', resume); };
+  }, [refresh]);
+
+  const active = state?.contracts.find(contract => contract.status === 'OPEN');
+  const shownSymbol = active?.symbol ?? symbol;
+  const index = state?.indices.find(item => item.symbol === shownSymbol);
+  const history = state?.ticks[shownSymbol] ?? [];
+  const latest = history.at(-1);
+  const recent = state?.contracts.find(contract => contract.symbol === shownSymbol);
+  const settled = state?.contracts.find(contract => contract.symbol === shownSymbol && contract.status !== 'OPEN');
+  const value = latest?.value ?? recent?.final_value ?? recent?.opening_value ?? index?.base_price ?? null;
+  const quote = displayQuote(value, index?.precision ?? 2);
+  const finalDigit = latest?.digit ?? settled?.final_digit ?? null;
+  const frequencies = digitFrequencies(history.map(tick => tick.digit));
+  const max = Math.max(...frequencies.filter((value): value is number => value !== null));
+  const min = Math.min(...frequencies.filter((value): value is number => value !== null));
   const remaining = active ? Math.max(0, Math.ceil((Date.parse(active.settles_at) - now) / 1000)) : 0;
-  const selectedTypeNeedsDigit = ["OVER", "UNDER", "MATCHES", "DIFFERS"].includes(contractType);
-  const finalDigit = active?.final_digit ?? digits.at(-1);
-  async function grantDemo() {
-    try { await accountRequest("grant_demo_credit", { amount: 1000, reason: "User-requested Binary Demo funds", idempotencyKey: crypto.randomUUID() }); await load(); }
-    catch (error) { setMessage(error instanceof Error ? error.message : "Demo funds could not be added."); }
-  }
-  async function place() {
+  const balance = state?.balance;
+  const selected = families[family];
+  const amount = Number(stake);
+  const validStake = stake.trim() !== '' && Number.isFinite(amount) && amount >= 0.01 && amount <= (balance?.available ?? 0) && Math.abs(amount * 100 - Math.round(amount * 100)) < 1e-7;
+  const locked = loading || working || !!active || uncertain;
+  const canPlace = !locked && !error && !!index && validStake;
+  const money = (value: number) => (balance?.currency ?? '') + ' ' + value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  async function place(type: BinaryContractType) {
+    if (mutation.current || (!pending.current && !canPlace)) return;
+    mutation.current = true; setWorking(true); setActionError('');
+    const payload = pending.current ?? { symbol: shownSymbol, contractType: type, prediction: family === 0 ? null : prediction, stake: amount, durationTicks: duration, idempotencyKey: crypto.randomUUID() };
+    pending.current = payload;
     try {
-      if (!stake || Number(stake) <= 0) throw new Error("Enter a stake before placing a contract.");
-      await binaryRequest("create", { symbol, contractType, prediction: selectedTypeNeedsDigit ? prediction : null, stake: Number(stake), durationTicks: duration, idempotencyKey: crypto.randomUUID() });
-      await load();
-    } catch (error) { setMessage(error instanceof Error ? error.message : "Contract could not be created."); }
+      await binaryRequest('create', payload);
+      if (!mounted.current) return;
+      pending.current = null; setUncertain(false);
+      await reading.current;
+      await refresh();
+    } catch (failure) {
+      if (mounted.current) {
+        setUncertain(true);
+        setActionError((failure instanceof Error ? failure.message : 'Unable to confirm the contract.') + ' Retry reuses this request.');
+      }
+    } finally { mutation.current = false; if (mounted.current) setWorking(false); }
   }
-  return <main className="min-h-[calc(100vh-72px)] bg-[#0b0d0c] px-3 py-4 text-white sm:px-6 sm:py-7"><div className="mx-auto max-w-5xl"><div className="flex items-center justify-between"><Link href="/app" className="flex items-center gap-2 text-sm text-white/55"><ArrowLeft size={16}/>Workspace</Link><button onClick={() => void load()} className="flex items-center gap-2 text-xs text-white/55"><RefreshCw size={14}/>Refresh</button></div><div className="mt-6 flex items-start justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-[.2em] text-[#b2de4f]">Binary Demo</p><h1 className="mt-2 text-2xl font-bold sm:text-3xl">Digit contracts</h1></div><div className="text-right"><p className="text-xs text-white/45">Available balance</p><p className="text-xl font-bold">{account.currency} {account.available.toLocaleString()}</p></div></div><div className="mt-5 flex items-start gap-3 rounded-2xl border border-[#b2de4f]/25 bg-[#b2de4f]/10 p-4 text-xs leading-5 text-white/70"><FlaskConical className="shrink-0 text-[#b2de4f]" size={18}/><span>Demo Mode only. Index prices, ticks, payouts and results are simulated. Binary uses the same account balance as other trading modes.</span></div>{message&&<p role="alert" className="mt-4 rounded-xl bg-red-400/15 p-3 text-sm text-red-200">{message}</p>}<section className="mt-5 rounded-2xl border border-white/10 bg-[#121513] p-4 sm:p-6"><div className="flex flex-wrap items-center justify-between gap-3"><select value={active?.symbol ?? symbol} disabled={!!active} onChange={e=>setSymbol(e.target.value)} className="rounded-xl border border-white/10 bg-[#0c0f0d] px-4 py-3 text-sm font-bold">{(state?.indices ?? []).map((item: BinaryIndex)=><option key={item.symbol} value={item.symbol}>{item.name}</option>)}</select><div className="text-right"><p className="text-2xl font-bold tabular-nums">{index?.base_price.toLocaleString() ?? "—"}</p><p className="text-xs text-[#b2de4f]">Simulated index value</p></div></div><div className="mt-7 grid grid-cols-5 gap-2 sm:grid-cols-10">{Array.from({length:10},(_,digit)=><div key={digit} className={`rounded-full border p-2 text-center ${finalDigit===digit?"border-[#b2de4f] bg-[#b2de4f]/20":"border-white/10 bg-black/20"}`}><strong className="block text-lg">{digit}</strong><small className="text-[10px] text-white/45">{digits.filter(item=>item===digit).length ? `${Math.round(digits.filter(item=>item===digit).length/Math.max(1,digits.length)*100)}%` : "—"}</small></div>)}</div><div className="mt-5 flex items-center justify-between text-xs text-white/45"><span>Recent simulated final digits</span><span>{digits.length ? digits.join(" · ") : "Waiting for ticks"}</span></div></section><div className="mt-4 grid gap-4 lg:grid-cols-[1fr_300px]"><section className="rounded-2xl border border-white/10 bg-[#121513] p-4 sm:p-6"><div className="flex flex-wrap gap-2">{types.map(type=><button key={type} onClick={()=>setContractType(type)} disabled={!!active} className={`rounded-xl px-3 py-2 text-xs font-bold ${contractType===type?"bg-[#b2de4f] text-[#111511]":"bg-white/5 text-white/60"}`}>{type}</button>)}</div>{selectedTypeNeedsDigit&&<div className="mt-4 grid grid-cols-5 gap-2 sm:grid-cols-10">{Array.from({length:10},(_,digit)=><button key={digit} onClick={()=>setPrediction(digit)} disabled={!!active} className={`rounded-lg border py-2 text-sm font-bold ${prediction===digit?"border-[#b2de4f] bg-[#b2de4f]/20":"border-white/10"}`}>{digit}</button>)}</div>}<div className="mt-5 grid gap-3 sm:grid-cols-2"><label className="text-xs font-bold text-white/60">Stake ({account.currency})<input value={stake} onChange={e=>setStake(e.target.value)} type="number" min="1" step="0.01" placeholder="Enter stake" className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-3 py-3 text-sm text-white"/></label><label className="text-xs font-bold text-white/60">Duration<select value={duration} onChange={e=>setDuration(Number(e.target.value))} className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-3 py-3 text-sm text-white">{durations.map(item=><option key={item} value={item}>{item} tick{item===1?"":"s"}</option>)}</select></label></div><div className="mt-5 grid grid-cols-2 gap-3"><div className="rounded-xl bg-[#20a6b4]/20 p-4"><p className="text-xs font-bold">Potential payout</p><p className="mt-2 text-xl font-bold">{stake?`${account.currency} ${(Number(stake)*1.96).toFixed(2)}`:"—"}</p></div><button onClick={active?undefined:place} disabled={busy||!!active||!stake} className="rounded-xl bg-[#b2de4f] px-4 py-3 text-sm font-bold text-[#111511] disabled:opacity-40">{active?`Settling in ${remaining}s`:"Place contract"}</button></div></section><aside className="rounded-2xl border border-white/10 bg-[#121513] p-4 sm:p-6"><p className="text-xs font-bold uppercase tracking-widest text-white/45">Account</p><p className="mt-3 text-3xl font-bold">{account.currency} {account.available.toLocaleString()}</p><p className="mt-1 text-xs text-white/45">Reserved {account.currency} {account.reserved.toLocaleString()}</p>{account.total===0&&<button onClick={()=>void grantDemo()} className="mt-5 w-full rounded-xl border border-[#b2de4f]/40 px-3 py-3 text-xs font-bold text-[#b2de4f]">Add Demo funds</button>}{active&&<div className="mt-5 rounded-xl bg-white/5 p-3 text-xs"><Clock3 size={15} className="mb-2 text-[#b2de4f]"/>Contract active for {remaining}s</div>}{active?.status!=="OPEN"&&active&&<div className="mt-5 rounded-xl bg-[#b2de4f]/10 p-3 text-xs"><CheckCircle2 size={15} className="mb-2 text-[#b2de4f]"/>Final digit {active.final_digit}. {evaluateDigitContract(active.contract_type,active.prediction,active.final_digit ?? 0).reason}</div>}</aside></div><section className="mt-4 rounded-2xl border border-white/10 bg-[#121513] p-4"><h2 className="text-xs font-bold uppercase tracking-widest text-white/45">Contract history</h2><div className="mt-3 space-y-2">{(state?.contracts ?? []).map((contract: BinaryContract)=><div key={contract.id} className="flex flex-wrap items-center justify-between gap-2 border-t border-white/10 py-3 text-xs"><span>{contract.contract_type} {contract.prediction ?? ""} · {contract.duration_ticks} ticks</span><span className={contract.status==="WON"?"text-[#b2de4f]":"text-white/55"}>{contract.status} · {account.currency} {contract.payout.toFixed(2)}</span></div>)}</div>{!state?.contracts.length&&<p className="py-6 text-center text-xs text-white/35">No Binary contracts yet.</p>}</section></div></main>;
+
+  return <main className="binary-terminal"><div className="binary-shell">
+    <header className="binary-toolbar">
+      <Link href="/app" aria-label="Back to workspace"><ArrowLeft size={18} /></Link>
+      <div className="binary-title">Binary <span>DEMO</span></div>
+      <div className="binary-wallet"><Wallet size={17} /><div><small>Available balance</small><strong>{balance ? money(balance.available) : '—'}</strong></div></div>
+      <button type="button" aria-label="Refresh Binary data" onClick={() => void refresh()} disabled={working}><RefreshCw size={17} /></button>
+    </header>
+    <p className="binary-disclosure"><span />Simulated market stream · virtual funds only</p>
+    {error && <div className="binary-error" role="alert">{error} <button type="button" onClick={() => void refresh()}>Retry connection</button>{state && <span>Showing the last loaded data. New contracts are paused.</span>}</div>}
+    <section className="binary-market" aria-label="Selected index">
+      <Activity size={26} className="binary-market-icon" />
+      <div className="binary-market-details"><label className="binary-index-picker"><span className="sr-only">Index</span>
+        <select aria-label="Index" value={shownSymbol} disabled={locked || !state?.indices.length} onChange={event => setSymbol(event.target.value)}>
+          {!state?.indices.length && <option value="">{loading ? 'Loading indices…' : 'No indices available'}</option>}
+          <optgroup label="Standard / 2-second">{state?.indices.filter(item => item.tick_interval_ms === 2000).map(item => <option key={item.symbol} value={item.symbol}>{item.name}</option>)}</optgroup>
+          <optgroup label="1-second">{state?.indices.filter(item => item.tick_interval_ms !== 2000).map(item => <option key={item.symbol} value={item.symbol}>{item.name}</option>)}</optgroup>
+        </select><ChevronDown size={18} /></label>
+        <p className="binary-quote">{quote !== '—' ? <>{quote.slice(0,-1)}<strong>{quote.slice(-1)}</strong></> : '—'} <span>{latest ? 'Live simulated tick' : value !== null ? 'Simulated reference value' : 'Awaiting index data'}</span></p>
+      </div>
+    </section>
+    <section className="binary-digit-stage" aria-label="Last digit statistics" aria-busy={loading}>
+      <div className="binary-stage-label"><span>Last digit frequency</span><span>{history.length ? history.length + ' recorded ticks' : 'No recorded ticks yet'}</span></div>
+      <div className="binary-digit-grid">{frequencies.map((frequency, digit) => <div key={digit} className={'binary-digit ' + (digit === finalDigit ? 'is-current' : '')} aria-label={'Digit ' + digit + ': ' + (frequency === null ? 'no data' : frequency.toFixed(1) + ' percent') + (digit === finalDigit ? ', latest digit' : '')}>
+        <div className="binary-digit-ring" style={{ '--arc': ((frequency ?? 0) * 3.6) + 'deg', '--ring': frequency !== null && max !== min ? frequency === max ? '#26b5bf' : frequency === min ? '#ef5750' : '#737979' : '#737979' } as CSSProperties}>
+          <div><strong>{digit}</strong><span>{frequency === null ? '—' : frequency.toFixed(1) + '%'}</span></div>
+        </div><span className="binary-digit-marker" aria-hidden="true">▲</span>
+      </div>)}</div>
+      <div className="binary-tick-strip" aria-label="Recent digits">{history.length ? history.slice(-12).map((tick, position) => <span key={position + '-' + tick.sequence} className={position === Math.min(history.length, 12)-1 ? 'is-latest' : ''}>{tick.digit}</span>) : <p>Your recorded ticks will appear here.</p>}</div>
+      <p className="binary-frequency-note">Past digit frequency is not a prediction of the next tick.</p>
+    </section>
+    <section className="binary-ticket" aria-label="Binary contract ticket">
+      <label className="binary-family"><Grid2X2 size={22} /><span className="sr-only">Trade type</span><select aria-label="Trade type" value={family} disabled={locked} onChange={event => setFamily(Number(event.target.value))}>{families.map((item,i) => <option key={item.label} value={i}>{item.label}</option>)}</select><ChevronDown size={19} /></label>
+      {family !== 0 && <fieldset className="binary-prediction" disabled={locked}><legend>{family === 1 ? 'Barrier · equality loses on both sides' : 'Predicted digit'}</legend><div>{Array.from({length:10}, (_, digit) => <button type="button" key={digit} aria-pressed={prediction === digit} onClick={() => setPrediction(digit)}>{digit}</button>)}</div></fieldset>}
+      <div className="binary-input-row">
+        <label><span>Duration</span><select aria-label="Duration in ticks" value={duration} disabled={locked} onChange={event => setDuration(Number(event.target.value))}>{[1,5,10,20].map(ticks => <option key={ticks} value={ticks}>{ticks} tick{ticks === 1 ? '' : 's'}</option>)}</select></label>
+        <label className="binary-stake"><span>Stake {balance ? '(' + balance.currency + ')' : ''}</span><input aria-label="Stake" type="number" min="0.01" step="0.01" placeholder="Enter amount" value={stake} disabled={locked} onChange={event => setStake(event.target.value)} /></label>
+      </div>
+      <div className="binary-contract-pair">{selected.types.map((type, i) => <button type="button" className={i === 0 ? 'binary-buy teal' : 'binary-buy coral'} key={type} disabled={!canPlace || (type === 'OVER' && prediction === 9) || (type === 'UNDER' && prediction === 0)} onClick={() => void place(type)}>
+        <span className="binary-buy-title"><Grid2X2 size={22} />{selected.names[i]}</span><span className="binary-buy-payout"><span>Est. demo payout</span><strong>{validStake && !uncertain ? money(Math.round(amount * 196) / 100) : '—'}</strong></span>
+      </button>)}</div>
+      <p className="binary-ticket-note">Payout includes the stake. The confirmed contract records the final payout.</p>
+      {balance && <p className="binary-reserved">Reserved {money(balance.reserved)}{balance.available === 0 && ' · No available funds'} <Link href="/app/transactions">Account history</Link></p>}
+      {actionError && <div className="binary-error" role="alert">{actionError}</div>}
+      {uncertain && <button type="button" className="binary-retry" disabled={working} onClick={() => void place(pending.current?.contractType as BinaryContractType)}>Retry same contract request</button>}
+      {active && <div className="binary-contract-status" role="status"><strong>{active.contract_type} · {active.duration_ticks} ticks</strong><span>{remaining ? remaining + 's until expiry' : 'Expired · awaiting server settlement'}</span><small>The server confirms the final digit and result.</small></div>}
+      {settled && !active && <div className="binary-contract-status" role="status"><strong>{settled.status === 'WON' ? 'Condition met' : settled.status === 'LOST' ? 'Condition not met' : 'Contract cancelled'}{settled.final_digit !== null && ' · Final digit ' + settled.final_digit}</strong><span>{settled.status === 'WON' ? 'Payout ' + money(settled.payout) : settled.status === 'LOST' ? 'Loss ' + money(settled.stake) : 'See account history'}</span></div>}
+    </section>
+    <details className="binary-history"><summary>Contract history <span>{state?.contracts.length ?? 0}</span></summary>
+      {state?.contracts.length ? state.contracts.map(contract => <article key={contract.id}><div><strong>{contract.contract_type}{contract.prediction !== null ? ' ' + contract.prediction : ''}</strong><small>{contract.symbol} · {contract.duration_ticks} ticks</small></div><div><strong>{contract.status}</strong><small>{contract.status === 'WON' ? 'Payout ' + money(contract.payout) : contract.status === 'LOST' ? 'Loss ' + money(contract.stake) : 'Stake ' + money(contract.stake)}</small></div></article>) : <p>{loading ? 'Loading contracts…' : error ? 'History is unavailable.' : 'No contracts yet.'}</p>}
+    </details>
+  </div></main>;
 }
