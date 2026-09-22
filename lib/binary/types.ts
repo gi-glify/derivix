@@ -1,6 +1,6 @@
 import type { BinaryContractType } from "./rules";
 
-export type BinaryIndex = { symbol: string; name: string; precision: number; base_price: number };
+export type BinaryIndex = { symbol: string; name: string; precision: number; base_price: number; tick_interval_ms: number; movement_scale: number };
 export type BinaryTick = { sequence: number; value: number; digit: number; created_at: string };
 export type BinaryContract = {
   id: string;
@@ -10,8 +10,8 @@ export type BinaryContract = {
   stake: number;
   payout: number;
   duration_ticks: number;
-  opening_tick: BinaryTick;
-  final_tick: BinaryTick | null;
+  opening_value: number;
+  final_value: number | null;
   final_digit: number | null;
   status: "OPEN" | "WON" | "LOST" | "CANCELLED";
   created_at: string;
