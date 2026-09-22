@@ -12,9 +12,11 @@ export type BinaryContract = {
   duration_ticks: number;
   opening_tick: BinaryTick;
   final_tick: BinaryTick | null;
+  final_digit: number | null;
   status: "OPEN" | "WON" | "LOST" | "CANCELLED";
   created_at: string;
   settled_at: string | null;
+  settles_at: string;
 };
 
 export type BinaryState = {
