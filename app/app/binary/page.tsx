@@ -69,10 +69,10 @@ function BinaryWorkspace() {
       try {
         await binaryRequest('tick');
         await refresh();
-        const open = latestState.current?.contracts.find(contract => contract.status === 'OPEN');
-        if (open && Date.parse(open.settles_at) <= Date.now() && !settling.current) {
+        const expired = latestState.current?.contracts.filter(contract => contract.status === 'OPEN' && Date.parse(contract.settles_at) <= Date.now()) ?? [];
+        if (expired.length && !settling.current) {
           settling.current = true;
-          try { await binaryRequest('settle', { id: open.id }); } finally { settling.current = false; await refresh(); }
+          try { await Promise.all(expired.map(contract => binaryRequest('settle', { id: contract.id }))); } finally { settling.current = false; await refresh(); }
         }
       } catch (failure) { if (mounted.current) setError(failure instanceof Error ? failure.message : 'Unable to update the simulated market.'); }
     };
@@ -83,8 +83,8 @@ function BinaryWorkspace() {
     return () => { mounted.current = false; clearInterval(clock); clearInterval(poll); document.removeEventListener('visibilitychange', resume); };
   }, [refresh]);
 
-  const active = state?.contracts.find(contract => contract.status === 'OPEN');
-  const shownSymbol = active?.symbol ?? symbol;
+  const shownSymbol = symbol;
+  const active = state?.contracts.find(contract => contract.status === 'OPEN' && contract.symbol === shownSymbol);
   const index = state?.indices.find(item => item.symbol === shownSymbol);
   const history = state?.ticks[shownSymbol] ?? [];
   const latest = history.at(-1);
