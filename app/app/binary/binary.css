@@ -15,6 +15,14 @@
 .binary-market { display:flex; align-items:center; gap:15px; padding:16px; border:1px solid #e0e7de; background:#fff; border-radius:16px; }
 .binary-market-icon { color:#b2de4f; flex-shrink:0; }
 .binary-market-details { flex:1; min-width:0; }
+.binary-chart { margin-top:16px; overflow:hidden; border:1px solid #e0e7de; border-radius:16px; background:#fff; }
+.binary-chart-heading { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:11px 14px; border-bottom:1px solid #e0e7de; color:#718078; font-size:11px; }
+.binary-chart-heading > div { display:flex; align-items:center; gap:7px; font-weight:700; color:#35413b; }
+.binary-chart-heading svg { color:#6d9e25; }
+.binary-chart .trading-chart { border:0; border-radius:0; }
+.binary-chart .chart-canvas { height:210px; min-height:210px; }
+.binary-chart .chart-toolbar { padding:8px 10px; }
+.binary-chart .chart-legend { padding:8px 12px; }
 .binary-index-picker { display:flex; align-items:center; }
 .binary-index-picker select { width:100%; min-width:0; font-weight:650; font-size:20px; background:transparent; border:0; appearance:none; padding:0 12px 0 0; }
 .binary-terminal option { background:#151b1b; color:#fff; }
@@ -84,6 +92,9 @@
 :root.dark .binary-toolbar { border-color:#2b3a31; }
 :root.dark .binary-toolbar > button,:root.dark .binary-toolbar > a { color:#a8b1a8; }
 :root.dark .binary-market,:root.dark .binary-ticket { background:#1b2321; border-color:#2b3a31; }
+:root.dark .binary-chart { background:#1b2321; border-color:#2b3a31; }
+:root.dark .binary-chart-heading { border-color:#2b3a31; color:#a8b1a8; }
+:root.dark .binary-chart-heading > div { color:#edf2ed; }
 :root.dark .binary-family,:root.dark .binary-input-row { background:#121a16; }
 :root.dark .binary-input-row label + label { border-color:#2b3a31; }
 :root.dark .binary-index-picker select,:root.dark .binary-input-row select,:root.dark .binary-input-row input { color:#f3f6f0; }

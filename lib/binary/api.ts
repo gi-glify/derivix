@@ -19,7 +19,10 @@ export async function loadBinarySnapshot(): Promise<BinaryState> {
   const [stateResult, markets, account] = await Promise.all([
     supabase.rpc('binary_state'), binaryRequest<unknown>('markets'), accountRequest<unknown>('summary'),
   ]);
-  if (stateResult.error) throw new Error(stateResult.error.message);
+  if (stateResult.error) {
+    if (stateResult.error.code === 'PGRST202') throw new Error('Binary Demo is awaiting backend setup.');
+    throw new Error(stateResult.error.message);
+  }
   const state = stateResult.data;
   return parseBinarySnapshot(state, markets, account);
 }

@@ -1,10 +1,12 @@
 "use client";
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
-import { ArrowLeft, ChevronDown, Grid2X2, RefreshCw, Activity, Wallet } from 'lucide-react';
+import { ArrowLeft, ChevronDown, Grid2X2, RefreshCw, Activity, Wallet, Radio } from 'lucide-react';
 import { Link } from '@/components/router-link';
 import { useAuth } from '@/lib/auth/store';
 import { advanceBinaryTicks, binaryRequest, loadBinarySnapshot } from '@/lib/binary/api';
 import { digitFrequencies, displayQuote } from '@/lib/binary/snapshot';
+import { binaryCandles, binaryChartPoints } from '@/lib/binary/candles';
+import { InteractiveCandlestickChart } from '@/components/charts/interactive-candlestick';
 import type { BinaryContractType } from '@/lib/binary/rules';
 import type { BinaryState } from '@/lib/binary/types';
 import './binary.css';
@@ -94,6 +96,7 @@ function BinaryWorkspace() {
   const quote = displayQuote(value, index?.precision ?? 2);
   const finalDigit = latest?.digit ?? settled?.final_digit ?? null;
   const frequencies = digitFrequencies(history.map(tick => tick.digit));
+  const chartPoints = binaryChartPoints(binaryCandles(history, Math.max(1000, (index?.tick_interval_ms ?? 1000) * 5)));
   const max = Math.max(...frequencies.filter((value): value is number => value !== null));
   const min = Math.min(...frequencies.filter((value): value is number => value !== null));
   const remaining = active ? Math.max(0, Math.ceil((Date.parse(active.settles_at) - now) / 1000)) : 0;
@@ -143,6 +146,10 @@ function BinaryWorkspace() {
         </select><ChevronDown size={18} /></label>
         <p className="binary-quote">{quote !== '—' ? <>{quote.slice(0,-1)}<strong>{quote.slice(-1)}</strong></> : '—'} <span>{latest ? 'Live simulated tick' : value !== null ? 'Simulated reference value' : 'Awaiting index data'}</span></p>
       </div>
+    </section>
+    <section className="binary-chart" aria-label="Recorded simulated price chart">
+      <div className="binary-chart-heading"><div><Radio size={15} /><span>Index movement</span></div><small>{latest ? `${index?.tick_interval_ms === 2000 ? '2-second' : '1-second'} simulated ticks` : 'Waiting for recorded ticks'}</small></div>
+      <InteractiveCandlestickChart points={chartPoints} symbol={index?.name ?? 'Binary index'} compact disclosure="Recorded simulated prices only" />
     </section>
     <section className="binary-digit-stage" aria-label="Last digit statistics" aria-busy={loading}>
       <div className="binary-stage-label"><span>Last digit frequency</span><span>{history.length ? history.length + ' recorded ticks' : 'No recorded ticks yet'}</span></div>

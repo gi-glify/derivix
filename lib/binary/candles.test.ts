@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { binaryCandles } from './candles';
+import { binaryChartPoints } from './candles';
 
 describe('Binary tick candles', () => {
   it('returns no invented candles when there are no stored ticks', () => {
@@ -15,6 +16,12 @@ describe('Binary tick candles', () => {
     expect(binaryCandles(ticks, 1000)).toEqual([
       { time: Date.parse('2026-09-22T10:00:00.000Z'), open: 100, high: 103, low: 100, close: 103 },
       { time: Date.parse('2026-09-22T10:00:01.000Z'), open: 101, high: 101, low: 101, close: 101 },
+    ]);
+  });
+
+  it('maps stored candles into the shared chart data shape without inventing volume', () => {
+    expect(binaryChartPoints([{ time: 1_000, open: 100, high: 103, low: 99, close: 102 }])).toEqual([
+      { time: 1, price: 102, open: 100, high: 103, low: 99, close: 102, volume: 1 },
     ]);
   });
 });
