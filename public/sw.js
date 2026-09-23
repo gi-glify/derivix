@@ -1,4 +1,4 @@
-const CACHE = "derivix-shell-v1";
+const CACHE = "derivix-shell-v2";
 const APP_SHELL = ["/", "/manifest.webmanifest", "/derivix-favicon.png"];
 
 self.addEventListener("install", (event) => {
