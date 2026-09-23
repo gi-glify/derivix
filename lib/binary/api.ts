@@ -20,3 +20,9 @@ export async function loadBinarySnapshot(): Promise<BinaryState> {
   ]);
   return parseBinarySnapshot(state, markets, account);
 }
+
+export async function advanceBinaryTicks(): Promise<void> {
+  if (!supabase) throw new Error("Binary Demo needs the configured account service.");
+  const { error } = await supabase.rpc('binary_advance_ticks');
+  if (error) throw new Error(error.message);
+}

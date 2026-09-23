@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties } from 're
 import { ArrowLeft, ChevronDown, Grid2X2, RefreshCw, Activity, Wallet } from 'lucide-react';
 import { Link } from '@/components/router-link';
 import { useAuth } from '@/lib/auth/store';
-import { binaryRequest, loadBinarySnapshot } from '@/lib/binary/api';
+import { advanceBinaryTicks, binaryRequest, loadBinarySnapshot } from '@/lib/binary/api';
 import { digitFrequencies, displayQuote } from '@/lib/binary/snapshot';
 import type { BinaryContractType } from '@/lib/binary/rules';
 import type { BinaryState } from '@/lib/binary/types';
@@ -67,7 +67,7 @@ function BinaryWorkspace() {
     const pulse = async () => {
       if (document.visibilityState !== 'visible' || mutation.current) return;
       try {
-        await binaryRequest('tick');
+        await advanceBinaryTicks();
         await refresh();
         const expired = latestState.current?.contracts.filter(contract => contract.status === 'OPEN' && Date.parse(contract.settles_at) <= Date.now()) ?? [];
         if (expired.length && !settling.current) {
