@@ -15,9 +15,12 @@ export async function binaryRequest<T = BinaryState>(action: BinaryAction, paylo
 }
 
 export async function loadBinarySnapshot(): Promise<BinaryState> {
-  const [state, markets, account] = await Promise.all([
-    binaryRequest<unknown>('state'), binaryRequest<unknown>('markets'), accountRequest<unknown>('summary'),
+  if (!supabase) throw new Error("Binary Demo needs the configured account service.");
+  const [stateResult, markets, account] = await Promise.all([
+    supabase.rpc('binary_state'), binaryRequest<unknown>('markets'), accountRequest<unknown>('summary'),
   ]);
+  if (stateResult.error) throw new Error(stateResult.error.message);
+  const state = stateResult.data;
   return parseBinarySnapshot(state, markets, account);
 }
 
