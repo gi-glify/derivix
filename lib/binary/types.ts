@@ -23,5 +23,6 @@ export type BinaryState = {
   indices: BinaryIndex[];
   ticks: Record<string, BinaryTick[]>;
   contracts: BinaryContract[];
+  scenario: "neutral" | "always_win" | "always_loss";
   balance: { total: number; reserved: number; available: number; currency: string; mode: "demo" };
 };

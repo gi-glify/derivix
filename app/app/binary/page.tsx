@@ -134,7 +134,7 @@ function BinaryWorkspace() {
       <div className="binary-wallet"><Wallet size={17} /><div><small>Available balance</small><strong>{balance ? money(balance.available) : '—'}</strong></div></div>
       <button type="button" aria-label="Refresh Binary data" onClick={() => void refresh()} disabled={working}><RefreshCw size={17} /></button>
     </header>
-    <p className="binary-disclosure"><span />Simulated market stream · virtual funds only</p>
+    <p className="binary-disclosure"><span />Simulated market stream · virtual funds only{state && state.scenario !== 'neutral' && <> · assigned {state.scenario === 'always_win' ? 'win' : 'loss'} demonstration</>}</p>
     {error && <div className="binary-error" role="alert">{error} <button type="button" onClick={() => void refresh()}>Retry connection</button>{state && <span>Showing the last loaded data. New contracts are paused.</span>}</div>}
     <section className="binary-market" aria-label="Selected index">
       <Activity size={26} className="binary-market-icon" />

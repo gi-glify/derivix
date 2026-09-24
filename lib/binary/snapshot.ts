@@ -67,7 +67,9 @@ export function parseBinarySnapshot(state: unknown, markets: unknown, account: u
   if (summary.mode !== 'demo') throw invalid();
   const balance = { total: number(summary.total), reserved: number(summary.reserved), available: number(summary.available), currency: string(summary.currency), mode: 'demo' as const };
   if (balance.available < 0 || balance.reserved < 0 || balance.total < 0) throw invalid();
-  return { indices, contracts, ticks, balance };
+  const scenario = source.scenario == null ? 'neutral' : string(source.scenario);
+  if (!['neutral','always_win','always_loss'].includes(scenario)) throw invalid();
+  return { indices, contracts, ticks, balance, scenario: scenario as BinaryState['scenario'] };
 }
 
 export function digitFrequencies(digits: number[]): (number | null)[] {

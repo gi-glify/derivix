@@ -9,6 +9,10 @@ describe('Binary RPC responses', () => {
     expect(result.indices.find(i => i.symbol === 'V50_1S')?.base_price).toBe(123.4);
     expect(result.balance.available).toBe(90);
     expect(result.contracts).toEqual([]);
+    expect(result.scenario).toBe('neutral');
+  });
+  it('keeps the disclosed Binary simulation assignment from the server state', () => {
+    expect(parseBinarySnapshot({ contracts: [], ticks: {}, scenario: 'always_loss' }, markets, account).scenario).toBe('always_loss');
   });
   it('keeps the configured tick interval and movement scale for each index', () => {
     const configuredMarkets = { indices: [{ symbol: 'V10', name: 'Volatility 10 Index', precision: 2, base_price: '100', tick_interval_ms: 2000, movement_scale: '0.1' }] };
